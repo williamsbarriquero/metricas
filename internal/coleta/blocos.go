@@ -33,7 +33,7 @@ type Bloco func(ctx context.Context, st *store.Store, cli *jira.Client, cfg para
 // ---------------------------------------------------------------------------
 // Histórias: tipos História, Story e Problema, resolvidas no intervalo
 // [início, dia 1 do mês seguinte ao fim). Status Concluido, Concluído ou Done,
-// sem o parent SQUAD-3632 e sem "QA" no resumo. Não filtra a Equipe.
+// sem o parent SQUAD-3632. Não filtra a Equipe.
 // ---------------------------------------------------------------------------
 
 // JQLHistorias monta a consulta de histórias entregues.
@@ -49,7 +49,6 @@ func JQLHistorias(cfg params.Config, p params.Periodo) string {
 	partes = append(partes,
 		"status IN "+params.JQLLista([]string{"Concluido", "Concluído", "Done"}),
 		"parent != SQUAD-3632",
-		`summary !~ "QA"`,
 	)
 	return strings.Join(partes, " AND ") + " ORDER BY status DESC, created DESC"
 }

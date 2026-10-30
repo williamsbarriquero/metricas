@@ -104,7 +104,7 @@ func TestJQLsIguaisAosDoAppsScript(t *testing.T) {
 		t.Fatal(err)
 	}
 	casos := map[string][2]string{
-		"historias":  {JQLHistorias(cfg, p), `type IN ("História", "Story", "Problema") AND resolved >= "2026-07-01" AND resolved < "2026-10-01" AND project IN ("HPAY", "SCG") AND status IN ("Concluido", "Concluído", "Done") AND parent != SQUAD-3632 AND summary !~ "QA" ORDER BY status DESC, created DESC`},
+		"historias":  {JQLHistorias(cfg, p), `type IN ("História", "Story", "Problema") AND resolved >= "2026-07-01" AND resolved < "2026-10-01" AND project IN ("HPAY", "SCG") AND status IN ("Concluido", "Concluído", "Done") AND parent != SQUAD-3632 ORDER BY status DESC, created DESC`},
 		"testbugs":   {JQLTestBugs(cfg, p), `project IN ("HPAY", "SCG") AND type = "Test Bug" AND resolved >= "2026-07-01" AND resolved < "2026-10-01" ORDER BY created DESC`},
 		"criados":    {JQLIncidentesCriados(cfg, p), `project IN ("HPAY", "SCG") AND issuetype IN ("[System] Incident", "Dúvida", "[System] Service request", "Incident") AND created >= "2026-07-01" AND created < "2026-10-01" ORDER BY created DESC`},
 		"resolvidos": {JQLIncidentesResolvidos(cfg, p), `issuetype IN ("[System] Incident", "Dúvida", "[System] Service request", "Incident") AND project IN ("HPAY", "SCG") AND resolved >= "2026-07-01" AND resolved < "2026-10-01" ORDER BY created DESC`},
