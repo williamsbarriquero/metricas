@@ -125,6 +125,14 @@ CREATE TABLE IF NOT EXISTS slide_geracao (
 	url TEXT NOT NULL DEFAULT '',
 	avisos TEXT NOT NULL DEFAULT ''
 );
+CREATE TABLE IF NOT EXISTS coleta_cobertura (
+	serie TEXT NOT NULL,
+	impressao TEXT NOT NULL DEFAULT '',
+	inicio TEXT NOT NULL,
+	fim_excl TEXT NOT NULL,
+	PRIMARY KEY (serie, inicio, fim_excl)
+);
+CREATE INDEX IF NOT EXISTS ix_coleta_cobertura_serie ON coleta_cobertura(serie);
 `
 
 // Abrir abre (e cria, se preciso) o arquivo de banco no caminho dado.

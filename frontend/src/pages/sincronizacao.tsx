@@ -7,15 +7,25 @@ import {
   Loader2,
   XCircle,
 } from 'lucide-react'
-import { Fragment, useState } from 'react'
+import { Fragment, useId, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Switch } from '@/components/ui/switch'
 import {
   Table,
   TableBody,
@@ -60,7 +70,10 @@ function StatusBadge({ status }: { status: SyncRun['status'] }) {
 
 export default function SincronizacaoPage() {
   const qc = useQueryClient()
+  const idForcar = useId()
   const [aberta, setAberta] = useState<number | null>(null)
+  const [forcar, setForcar] = useState(false)
+  const [confirmando, setConfirmando] = useState<string | null>(null)
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['sync-status'],
@@ -69,13 +82,26 @@ export default function SincronizacaoPage() {
   })
 
   const iniciar = useMutation({
-    mutationFn: (bloco: string) => api.iniciarSync(bloco),
-    onSuccess: (r) => {
-      toast.info(`Coleta iniciada: ${NOME_BLOCO[r.bloco]}.`)
+    mutationFn: ({ bloco, forcar: f }: { bloco: string; forcar: boolean }) =>
+      api.iniciarSync(bloco, f),
+    onSuccess: (r, vars) => {
+      toast.info(
+        vars.forcar
+          ? `Sincronia completa iniciada: ${NOME_BLOCO[r.bloco]}.`
+          : `Coleta iniciada: ${NOME_BLOCO[r.bloco]}.`,
+      )
       void qc.invalidateQueries({ queryKey: ['sync-status'] })
     },
     onError: (e: Error) => toast.error('Não foi possível iniciar', { description: e.message }),
   })
+
+  const disparar = (bloco: string) => {
+    if (forcar) {
+      setConfirmando(bloco)
+      return
+    }
+    iniciar.mutate({ bloco, forcar: false })
+  }
 
   // quando uma coleta termina, atualiza as métricas
   const ultima = data?.ultima
@@ -129,16 +155,24 @@ export default function SincronizacaoPage() {
         <CardHeader>
           <CardTitle>Atualizar dados do Jira</CardTitle>
           <CardDescription>
-            Busca os dados do período configurado e substitui os dados anteriores de cada bloco.
-            Roda em segundo plano.
+            A coleta normal só busca o que ainda não foi sincronizado. Use o interruptor para
+            rebuscar o período inteiro quando houver ajuste no Jira. Roda em segundo plano.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex flex-wrap gap-2">
-            <Button
+          <div className="flex items-center gap-3">
+            <Switch
+              id={idForcar}
+              checked={forcar}
+              onCheckedChange={setForcar}
               disabled={ocupado || !data.jira_configurado}
-              onClick={() => iniciar.mutate('tudo')}
-            >
+            />
+            <Label htmlFor={idForcar} className="text-sm font-normal">
+              Forçar período completo
+            </Label>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={ocupado || !data.jira_configurado} onClick={() => disparar('tudo')}>
               {data.em_andamento ? <Loader2 className="animate-spin" /> : null} Atualizar tudo
             </Button>
             {BLOCOS.map((b) => (
@@ -146,7 +180,7 @@ export default function SincronizacaoPage() {
                 key={b.id}
                 variant="outline"
                 disabled={ocupado || !data.jira_configurado}
-                onClick={() => iniciar.mutate(b.id)}
+                onClick={() => disparar(b.id)}
               >
                 {b.rotulo}
               </Button>
@@ -244,6 +278,34 @@ export default function SincronizacaoPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={confirmando !== null} onOpenChange={(a) => !a && setConfirmando(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Forçar período completo?</DialogTitle>
+            <DialogDescription>
+              A consulta volta a percorrer o período configurado inteiro no Jira, inclusive meses já
+              sincronizados, para refletir alteração feita depois da última coleta.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmando(null)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={iniciar.isPending}
+              onClick={() => {
+                if (!confirmando) return
+                const bloco = confirmando
+                setConfirmando(null)
+                iniciar.mutate({ bloco, forcar: true })
+              }}
+            >
+              Confirmar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

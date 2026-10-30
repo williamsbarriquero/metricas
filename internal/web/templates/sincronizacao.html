@@ -6,8 +6,12 @@
 
 <section class="cartao">
   <header class="cartao-cab"><div><h2>Atualizar dados do Jira</h2>
-    <p>Roda em segundo plano; você pode navegar enquanto isso. Cada bloco substitui os dados anteriores dele.</p></div></header>
-  <form method="post" action="/sincronizacao" class="acoes">
+    <p>A coleta normal só busca o que ainda não foi sincronizado. Marque <strong>Forçar período completo</strong> para rebuscar o intervalo inteiro quando houver ajuste no Jira.</p></div></header>
+  <form method="post" action="/sincronizacao" class="acoes" id="form-sync"
+        onsubmit="if (this.forcar && this.forcar.checked && !confirm('Rebuscar o período configurado inteiro no Jira, inclusive meses já sincronizados?')) return false;">
+    <label class="suave" style="display:flex;align-items:center;gap:.5rem;width:100%;margin-bottom:.5rem">
+      <input type="checkbox" name="forcar" value="1"> Forçar período completo
+    </label>
     <button class="botao" name="bloco" value="tudo" {{if or .EmAndamento (not .JiraOK)}}disabled{{end}}>{{icone "sincronizacao"}} Atualizar tudo</button>
     {{range .Blocos}}<button class="botao botao-contorno" name="bloco" value="{{.ID}}" {{if or $.EmAndamento (not $.JiraOK)}}disabled{{end}}>{{.Rotulo}}</button>{{end}}
   </form>

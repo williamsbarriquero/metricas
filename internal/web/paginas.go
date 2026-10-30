@@ -513,7 +513,7 @@ func (s *Server) sincronizacao(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	vm := syncVM{
-		base:        s.base(w, r, "Sincronização", "Busca os dados do período configurado no Jira e substitui os dados anteriores de cada bloco.", "sincronizacao"),
+		base:        s.base(w, r, "Sincronização", "A coleta normal só busca o que ainda não foi sincronizado. Marque Forçar período completo para rebuscar o intervalo inteiro (ajuste no Jira).", "sincronizacao"),
 		EmAndamento: s.run.EmAndamento(), JiraOK: s.run.JiraConfigurado(), Historico: s.linhasSync(runs), Jira: s.jira,
 	}
 	for _, b := range coleta.Blocos() {
@@ -531,10 +531,15 @@ func (s *Server) sincronizacaoIniciar(w http.ResponseWriter, r *http.Request) {
 	if bloco == "" {
 		bloco = "tudo"
 	}
-	_, err := s.run.Iniciar(r.Context(), bloco)
+	forcar := r.PostForm.Get("forcar") == "1" || r.PostForm.Get("forcar") == "true" || r.PostForm.Get("forcar") == "on"
+	_, err := s.run.Iniciar(r.Context(), bloco, forcar)
 	switch {
 	case err == nil:
-		s.redirecionar(w, r, "/sincronizacao", "info", "Coleta iniciada: "+coleta.Rotulo(bloco)+".")
+		msg := "Coleta iniciada: " + coleta.Rotulo(bloco) + "."
+		if forcar {
+			msg = "Sincronia completa iniciada: " + coleta.Rotulo(bloco) + "."
+		}
+		s.redirecionar(w, r, "/sincronizacao", "info", msg)
 	case errors.Is(err, coleta.ErrEmAndamento):
 		s.redirecionar(w, r, "/sincronizacao", "aviso", err.Error())
 	case errors.Is(err, jira.ErrNaoConfigurado):

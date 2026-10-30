@@ -94,7 +94,8 @@ func (r *Runner) JiraConfigurado() bool {
 func (r *Runner) Aguardar() { r.wg.Wait() }
 
 // Iniciar cria o registro da coleta e a executa em segundo plano. Devolve o id do registro.
-func (r *Runner) Iniciar(ctx context.Context, nome string) (int64, error) {
+// forcar=true ignora a cobertura e rebusca o período configurado inteiro.
+func (r *Runner) Iniciar(ctx context.Context, nome string, forcar bool) (int64, error) {
 	nomes, err := ValidaBloco(nome)
 	if err != nil {
 		return 0, err
@@ -126,7 +127,7 @@ func (r *Runner) Iniciar(ctx context.Context, nome string) (int64, error) {
 	go func() {
 		defer r.wg.Done()
 		defer r.ocupado.Unlock()
-		r.executar(id, nomes, cfg, p, cli)
+		r.executar(id, nomes, cfg, p, cli, forcar)
 	}()
 	return id, nil
 }
@@ -158,7 +159,7 @@ type estadoBloco struct {
 //
 // Se um bloco falha, os outros terminam normalmente (cada um já substitui só a sua tabela); a coleta fica
 // marcada como "Falhou" e a mensagem diz o que deu certo e o que não deu.
-func (r *Runner) executar(id int64, nomes []string, cfg params.Config, p params.Periodo, cli *jira.Client) {
+func (r *Runner) executar(id int64, nomes []string, cfg params.Config, p params.Periodo, cli *jira.Client, forcar bool) {
 	ctx := r.ctx
 	eventos := make(chan evento, 64) // o agregador sempre esvazia até o fechamento: sem risco de bloqueio eterno
 
@@ -174,7 +175,7 @@ func (r *Runner) executar(id int64, nomes []string, cfg params.Config, p params.
 					}
 				}()
 				prog := func(pct int, etapa string) { eventos <- evento{bloco: nome, pct: pct, etapa: etapa} }
-				res, err := blocos[nome].Func(ctx, r.st, cli, cfg, p, prog)
+				res, err := blocos[nome].Func(ctx, r.st, cli, cfg, p, prog, forcar)
 				eventos <- evento{bloco: nome, fim: true, res: res, err: err}
 			}()
 		}()

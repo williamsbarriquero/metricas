@@ -1,13 +1,16 @@
-// Package coleta busca os dados no Jira e grava no banco. Cada bloco substitui a sua tabela de forma atômica.
+// Package coleta busca os dados no Jira e grava no banco.
+// No caminho padrão, só consulta lacunas ainda não cobertas; com forcar, substitui o período inteiro.
 package coleta
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
 
 	"metricas-coordenadores/internal/conc"
+	"metricas-coordenadores/internal/equipe"
 	"metricas-coordenadores/internal/jira"
 	"metricas-coordenadores/internal/params"
 	"metricas-coordenadores/internal/store"
@@ -24,8 +27,8 @@ type Progresso func(pct int, etapa string)
 
 func semProgresso(int, string) {}
 
-// Bloco é uma etapa da coleta.
-type Bloco func(ctx context.Context, st *store.Store, cli *jira.Client, cfg params.Config, p params.Periodo, prog Progresso) (Resultado, error)
+// Bloco é uma etapa da coleta. forcar=true ignora a cobertura e rebusca o período inteiro.
+type Bloco func(ctx context.Context, st *store.Store, cli *jira.Client, cfg params.Config, p params.Periodo, prog Progresso, forcar bool) (Resultado, error)
 
 // ---------------------------------------------------------------------------
 // Histórias: tipos História, Story e Problema, resolvidas no intervalo
@@ -53,17 +56,7 @@ func JQLHistorias(cfg params.Config, p params.Periodo) string {
 
 func campoUsuario(u *jira.Usuario) (string, string) { return jira.NomeUsuario(u), jira.IDUsuario(u) }
 
-// Historias coleta as histórias entregues. Grava o que a JQL devolve, sem filtrar Equipe nem QA.
-func Historias(ctx context.Context, st *store.Store, cli *jira.Client, cfg params.Config, p params.Periodo, prog Progresso) (Resultado, error) {
-	prog(5, "Buscando histórias no Jira")
-	campos := []string{"summary", "project", "issuetype", "status", "assignee",
-		params.CampoQAResponsavel, params.CampoContaEsforco, "resolutiondate", "created"}
-	issues, err := cli.BuscarIssues(ctx, JQLHistorias(cfg, p), campos)
-	if err != nil {
-		return Resultado{}, err
-	}
-	prog(70, fmt.Sprintf("%d histórias lidas; gravando", len(issues)))
-
+func historiasDeIssues(issues []jira.Issue) []store.Historia {
 	linhas := map[string]store.Historia{}
 	var ordem []string
 	for _, i := range issues {
@@ -84,10 +77,67 @@ func Historias(ctx context.Context, st *store.Store, cli *jira.Client, cfg param
 	for _, k := range ordem {
 		lista = append(lista, linhas[k])
 	}
-	if err := st.SubstituirHistorias(ctx, lista); err != nil {
+	return lista
+}
+
+// Historias coleta as histórias entregues. Grava o que a JQL devolve, sem filtrar Equipe nem QA.
+func Historias(ctx context.Context, st *store.Store, cli *jira.Client, cfg params.Config, p params.Periodo, prog Progresso, forcar bool) (Resultado, error) {
+	imp := JQLHistorias(cfg, periodoSentinela)
+	cob, err := st.LerCobertura(ctx, SerieHistorias)
+	if err != nil {
 		return Resultado{}, err
 	}
-	return Resultado{Linhas: len(lista)}, nil
+	pedido := IntervaloResolvedMes(p)
+	plano := PlanejarSync(intervalosStore(cob), cob.Impressao, imp, pedido, forcar)
+	campos := []string{"summary", "project", "issuetype", "status", "assignee",
+		params.CampoQAResponsavel, params.CampoContaEsforco, "resolutiondate", "created"}
+
+	if plano.Motivo == MotivoContido {
+		prog(100, "Histórias: período já coberto")
+		return Resultado{Info: "período já coberto"}, nil
+	}
+	if forcar {
+		prog(5, "Sincronia completa: buscando histórias no Jira")
+	} else {
+		prog(5, "Histórias: "+FormatarLacunas(plano.Lacunas))
+	}
+
+	var issues []jira.Issue
+	for _, lac := range plano.Lacunas {
+		parte, err := cli.BuscarIssues(ctx, JQLHistorias(cfg, PeriodoDaLacuna(lac)), campos)
+		if err != nil {
+			return Resultado{}, err
+		}
+		issues = append(issues, parte...)
+	}
+	prog(70, fmt.Sprintf("%d histórias lidas; gravando", len(issues)))
+	lista := historiasDeIssues(issues)
+	novaCob := Fundir(coberturaApos(plano, intervalosStore(cob)))
+	err = st.ComTx(ctx, func(tx *sql.Tx) error {
+		if plano.Substituir {
+			if err := store.SubstituirHistoriasTx(tx, ctx, lista); err != nil {
+				return err
+			}
+		} else if err := store.MesclarHistoriasTx(tx, ctx, lista); err != nil {
+			return err
+		}
+		return store.GravarCoberturaTx(tx, ctx, SerieHistorias, imp, paraStore(novaCob))
+	})
+	if err != nil {
+		return Resultado{}, err
+	}
+	return Resultado{Linhas: len(lista), Info: infoPlano(plano)}, nil
+}
+
+func infoPlano(plano PlanoSyncSerie) string {
+	switch plano.Motivo {
+	case MotivoContido:
+		return "período já coberto"
+	case MotivoLacunas:
+		return FormatarLacunas(plano.Lacunas)
+	default:
+		return ""
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -108,16 +158,7 @@ func JQLTestBugs(cfg params.Config, p params.Periodo) string {
 	return strings.Join(partes, " AND ") + " ORDER BY created DESC"
 }
 
-// TestBugs coleta os Test Bugs.
-func TestBugs(ctx context.Context, st *store.Store, cli *jira.Client, cfg params.Config, p params.Periodo, prog Progresso) (Resultado, error) {
-	prog(5, "Buscando Test Bugs no Jira")
-	campos := []string{"summary", "project", "issuetype", "status", "assignee", "resolution", "created", "resolutiondate", "labels"}
-	issues, err := cli.BuscarIssues(ctx, JQLTestBugs(cfg, p), campos)
-	if err != nil {
-		return Resultado{}, err
-	}
-	prog(70, fmt.Sprintf("%d Test Bugs lidos; gravando", len(issues)))
-
+func testBugsDeIssues(issues []jira.Issue) []store.TestBug {
 	vistos := map[string]int{}
 	var lista []store.TestBug
 	for _, i := range issues {
@@ -135,10 +176,55 @@ func TestBugs(ctx context.Context, st *store.Store, cli *jira.Client, cfg params
 		vistos[i.Key] = len(lista)
 		lista = append(lista, t)
 	}
-	if err := st.SubstituirTestBugs(ctx, lista); err != nil {
+	return lista
+}
+
+// TestBugs coleta os Test Bugs.
+func TestBugs(ctx context.Context, st *store.Store, cli *jira.Client, cfg params.Config, p params.Periodo, prog Progresso, forcar bool) (Resultado, error) {
+	imp := JQLTestBugs(cfg, periodoSentinela)
+	cob, err := st.LerCobertura(ctx, SerieTestBugs)
+	if err != nil {
 		return Resultado{}, err
 	}
-	return Resultado{Linhas: len(lista)}, nil
+	pedido := IntervaloResolvedMes(p)
+	plano := PlanejarSync(intervalosStore(cob), cob.Impressao, imp, pedido, forcar)
+	campos := []string{"summary", "project", "issuetype", "status", "assignee", "resolution", "created", "resolutiondate", "labels"}
+
+	if plano.Motivo == MotivoContido {
+		prog(100, "Test Bugs: período já coberto")
+		return Resultado{Info: "período já coberto"}, nil
+	}
+	if forcar {
+		prog(5, "Sincronia completa: buscando Test Bugs no Jira")
+	} else {
+		prog(5, "Test Bugs: "+FormatarLacunas(plano.Lacunas))
+	}
+
+	var issues []jira.Issue
+	for _, lac := range plano.Lacunas {
+		parte, err := cli.BuscarIssues(ctx, JQLTestBugs(cfg, PeriodoDaLacuna(lac)), campos)
+		if err != nil {
+			return Resultado{}, err
+		}
+		issues = append(issues, parte...)
+	}
+	prog(70, fmt.Sprintf("%d Test Bugs lidos; gravando", len(issues)))
+	lista := testBugsDeIssues(issues)
+	novaCob := Fundir(coberturaApos(plano, intervalosStore(cob)))
+	err = st.ComTx(ctx, func(tx *sql.Tx) error {
+		if plano.Substituir {
+			if err := store.SubstituirTestBugsTx(tx, ctx, lista); err != nil {
+				return err
+			}
+		} else if err := store.MesclarTestBugsTx(tx, ctx, lista); err != nil {
+			return err
+		}
+		return store.GravarCoberturaTx(tx, ctx, SerieTestBugs, imp, paraStore(novaCob))
+	})
+	if err != nil {
+		return Resultado{}, err
+	}
+	return Resultado{Linhas: len(lista), Info: infoPlano(plano)}, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -185,24 +271,109 @@ func incidenteDe(i jira.Issue, registro string) store.Incidente {
 	}
 }
 
-// Incidentes coleta os incidentes criados e resolvidos.
-func Incidentes(ctx context.Context, st *store.Store, cli *jira.Client, cfg params.Config, p params.Periodo, prog Progresso) (Resultado, error) {
+func buscarIssuesLacunas(ctx context.Context, cli *jira.Client, campos []string, lacs []Intervalo, jql func(params.Periodo) string) ([]jira.Issue, error) {
+	var out []jira.Issue
+	for _, lac := range lacs {
+		parte, err := cli.BuscarIssues(ctx, jql(PeriodoDaLacuna(lac)), campos)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, parte...)
+	}
+	return out, nil
+}
+
+// Incidentes coleta os incidentes criados, resolvidos e estoque (três séries de cobertura).
+func Incidentes(ctx context.Context, st *store.Store, cli *jira.Client, cfg params.Config, p params.Periodo, prog Progresso, forcar bool) (Resultado, error) {
 	campos := []string{"summary", "project", "issuetype", "status", "resolutiondate", "created"}
-	// As três consultas são independentes: rodam ao mesmo tempo, cada uma na sua goroutine.
-	prog(5, "Buscando incidentes criados, resolvidos e estoque")
+	pedido := IntervaloDoPeriodoJQL(p)
+
+	cobC, err := st.LerCobertura(ctx, SerieIncidentesCriados)
+	if err != nil {
+		return Resultado{}, err
+	}
+	cobR, err := st.LerCobertura(ctx, SerieIncidentesResolvidos)
+	if err != nil {
+		return Resultado{}, err
+	}
+	cobE, err := st.LerCobertura(ctx, SerieIncidentesEstoque)
+	if err != nil {
+		return Resultado{}, err
+	}
+	impC := JQLIncidentesCriados(cfg, periodoSentinela)
+	impR := JQLIncidentesResolvidos(cfg, periodoSentinela)
+	impE := JQLIncidentesEstoque(cfg, periodoSentinela)
+	planoC := PlanejarSync(intervalosStore(cobC), cobC.Impressao, impC, pedido, forcar)
+	planoR := PlanejarSync(intervalosStore(cobR), cobR.Impressao, impR, pedido, forcar)
+	planoE := PlanejarSync(intervalosStore(cobE), cobE.Impressao, impE, pedido, forcar)
+	// Substituição de uma série apaga a tabela inteira: as três passam a buscar o período completo.
+	if planoC.Substituir || planoR.Substituir || planoE.Substituir {
+		forcarSerie := func(pl *PlanoSyncSerie, motivo string) {
+			pl.Substituir = true
+			if pl.Motivo == MotivoContido || pl.Motivo == MotivoLacunas {
+				pl.Motivo = motivo
+			}
+			pl.Lacunas = []Intervalo{pedido}
+		}
+		motivo := MotivoPrimeiraSync
+		if forcar {
+			motivo = MotivoForcar
+		} else if planoC.Motivo == MotivoImpressaoMudou || planoR.Motivo == MotivoImpressaoMudou || planoE.Motivo == MotivoImpressaoMudou {
+			motivo = MotivoImpressaoMudou
+		}
+		forcarSerie(&planoC, motivo)
+		forcarSerie(&planoR, motivo)
+		forcarSerie(&planoE, motivo)
+	}
+
+	if planoC.Motivo == MotivoContido && planoR.Motivo == MotivoContido && planoE.Motivo == MotivoContido {
+		prog(100, "Incidentes: período já coberto")
+		return Resultado{Info: "período já coberto"}, nil
+	}
+	if forcar || planoC.Substituir {
+		prog(5, "Sincronia completa: buscando incidentes")
+	} else {
+		prog(5, "Incidentes: "+FormatarLacunas(append(append(planoC.Lacunas, planoR.Lacunas...), planoE.Lacunas...)))
+	}
+
 	var criados, resolvidos, estoque []jira.Issue
-	err := conc.Paralelo(ctx,
+	err = conc.Paralelo(ctx,
 		func(ctx context.Context) (err error) {
-			criados, err = cli.BuscarIssues(ctx, JQLIncidentesCriados(cfg, p), campos)
+			if planoC.Motivo == MotivoContido {
+				return nil
+			}
+			criados, err = buscarIssuesLacunas(ctx, cli, campos, planoC.Lacunas, func(pp params.Periodo) string {
+				return JQLIncidentesCriados(cfg, pp)
+			})
 			return err
 		},
 		func(ctx context.Context) (err error) {
-			resolvidos, err = cli.BuscarIssues(ctx, JQLIncidentesResolvidos(cfg, p), campos)
+			if planoR.Motivo == MotivoContido {
+				return nil
+			}
+			resolvidos, err = buscarIssuesLacunas(ctx, cli, campos, planoR.Lacunas, func(pp params.Periodo) string {
+				return JQLIncidentesResolvidos(cfg, pp)
+			})
 			return err
 		},
 		func(ctx context.Context) (err error) {
-			estoque, err = cli.BuscarIssues(ctx, JQLIncidentesEstoque(cfg, p), campos)
-			return err
+			if planoE.Motivo == MotivoContido {
+				return nil
+			}
+			for _, lac := range planoE.Lacunas {
+				var jql string
+				if planoE.Substituir {
+					jql = JQLIncidentesEstoque(cfg, PeriodoDaLacuna(lac))
+				} else {
+					jql = JQLIncidentesEstoqueLacuna(cfg, pedido, lac, intervalosStore(cobE))
+				}
+				parte, err := cli.BuscarIssues(ctx, jql, campos)
+				if err != nil {
+					return err
+				}
+				estoque = append(estoque, parte...)
+			}
+			return nil
 		},
 	)
 	if err != nil {
@@ -225,7 +396,34 @@ func Incidentes(ctx context.Context, st *store.Store, cli *jira.Client, cfg para
 	adicionar(criados, store.Criado)
 	adicionar(resolvidos, store.Resolvido)
 	adicionar(estoque, store.Estoque)
-	if err := st.SubstituirIncidentes(ctx, lista); err != nil {
+
+	substituir := planoC.Substituir || planoR.Substituir || planoE.Substituir
+	err = st.ComTx(ctx, func(tx *sql.Tx) error {
+		if substituir {
+			if err := store.SubstituirIncidentesTx(tx, ctx, lista); err != nil {
+				return err
+			}
+		} else if err := store.MesclarIncidentesTx(tx, ctx, lista); err != nil {
+			return err
+		}
+		if planoC.Motivo != MotivoContido {
+			if err := store.GravarCoberturaTx(tx, ctx, SerieIncidentesCriados, impC, paraStore(Fundir(coberturaApos(planoC, intervalosStore(cobC))))); err != nil {
+				return err
+			}
+		}
+		if planoR.Motivo != MotivoContido {
+			if err := store.GravarCoberturaTx(tx, ctx, SerieIncidentesResolvidos, impR, paraStore(Fundir(coberturaApos(planoR, intervalosStore(cobR))))); err != nil {
+				return err
+			}
+		}
+		if planoE.Motivo != MotivoContido {
+			if err := store.GravarCoberturaTx(tx, ctx, SerieIncidentesEstoque, impE, paraStore(Fundir(coberturaApos(planoE, intervalosStore(cobE))))); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
 		return Resultado{}, err
 	}
 	return Resultado{
@@ -309,91 +507,7 @@ func coletarPorIssue(ctx context.Context, cli *jira.Client, porID map[string]iss
 	return pares, nil
 }
 
-// Horas coleta os worklogs do período.
-//
-// No modo bulk, a busca das issues e a leitura dos worklogs (pipeline WorklogsEmMassa) não dependem uma da
-// outra, então rodam ao mesmo tempo; o cruzamento (worklog -> issue) é feito quando as duas terminam. Se o
-// modo bulk falhar, cai para uma chamada por issue (pool de goroutines), reaproveitando as issues já lidas.
-func Horas(ctx context.Context, st *store.Store, cli *jira.Client, cfg params.Config, p params.Periodo, prog Progresso) (Resultado, error) {
-	eq, membros, err := prepararEquipe(ctx, st)
-	if err != nil {
-		return Resultado{}, err
-	}
-	if !eq.Ativa() {
-		if err := st.SubstituirWorklogs(ctx, nil); err != nil {
-			return Resultado{}, err
-		}
-		prog(100, avisoSemEquipe)
-		return Resultado{Info: avisoSemEquipe}, nil
-	}
-	porIssue := cfg["horasModo"] == params.ModoPorIssue
-
-	var (
-		encontradas []jira.Issue
-		wlsBulk     []jira.Worklog
-		erroBulk    error
-	)
-	tarefas := []func(ctx context.Context) error{
-		func(ctx context.Context) (err error) {
-			encontradas, err = cli.BuscarIssues(ctx, JQLHoras(cfg, p, membros), []string{"summary", "project", "issuetype", params.CampoContaEsforco})
-			if err == nil {
-				prog(20, fmt.Sprintf("%d issues com worklog no período", len(encontradas)))
-			}
-			return err
-		},
-	}
-	if porIssue {
-		prog(5, "Buscando issues com horas lançadas")
-	} else {
-		prog(5, "Buscando issues e worklogs em paralelo")
-		tarefas = append(tarefas, func(ctx context.Context) error {
-			wlsBulk, erroBulk = cli.WorklogsEmMassa(ctx, p.Inicio.Add(-MargemBulk), func(lotes, wls int) {
-				prog(min(10+lotes*5, 85), fmt.Sprintf("%d worklogs lidos do Jira", wls))
-			})
-			return nil // a falha do modo bulk não derruba a busca de issues: existe o plano B
-		})
-	}
-	if err := conc.Paralelo(ctx, tarefas...); err != nil {
-		return Resultado{}, err
-	}
-
-	porID := map[string]issueHoras{}
-	var ordem []string
-	for _, i := range encontradas {
-		conta := i.Fields.ContaEsforcoValor()
-		if conta == "" {
-			conta = params.SemConta
-		}
-		if _, ja := porID[i.ID]; !ja {
-			ordem = append(ordem, i.ID)
-		}
-		porID[i.ID] = issueHoras{i.Key, i.Fields.Summary, i.Fields.ProjetoChave(), i.Fields.TipoNome(), conta}
-	}
-
-	var (
-		pares []parHoras
-		info  string
-	)
-	switch {
-	case porIssue:
-		pares, err = coletarPorIssue(ctx, cli, porID, ordem, p, prog)
-	case erroBulk == nil:
-		pares = filtrarBulk(wlsBulk, porID, p)
-	default:
-		if ctx.Err() != nil {
-			return Resultado{}, ctx.Err()
-		}
-		var je *jira.Erro
-		if !asErro(erroBulk, &je) {
-			return Resultado{}, erroBulk
-		}
-		info = fmt.Sprintf("Modo em massa falhou (%v); usei uma chamada por issue.", erroBulk)
-		pares, err = coletarPorIssue(ctx, cli, porID, ordem, p, prog)
-	}
-	if err != nil {
-		return Resultado{}, err
-	}
-
+func worklogsDaEquipe(pares []parHoras, eq equipe.Equipe) []store.Worklog {
 	vistos := map[string]int{}
 	var lista []store.Worklog
 	for _, par := range pares {
@@ -412,9 +526,157 @@ func Horas(ctx context.Context, st *store.Store, cli *jira.Client, cfg params.Co
 		vistos[w.ID] = len(lista)
 		lista = append(lista, w)
 	}
-	prog(92, fmt.Sprintf("%d worklogs; gravando", len(lista)))
-	if err := st.SubstituirWorklogs(ctx, lista); err != nil {
+	return lista
+}
+
+func coletarHorasPeriodo(ctx context.Context, cli *jira.Client, cfg params.Config, p params.Periodo, membros []store.EquipeMembro, prog Progresso, permitirBulk bool) ([]parHoras, string, error) {
+	porIssue := cfg["horasModo"] == params.ModoPorIssue || !permitirBulk
+	var (
+		encontradas []jira.Issue
+		wlsBulk     []jira.Worklog
+		erroBulk    error
+	)
+	tarefas := []func(ctx context.Context) error{
+		func(ctx context.Context) (err error) {
+			encontradas, err = cli.BuscarIssues(ctx, JQLHoras(cfg, p, membros), []string{"summary", "project", "issuetype", params.CampoContaEsforco})
+			if err == nil {
+				prog(20, fmt.Sprintf("%d issues com worklog no período", len(encontradas)))
+			}
+			return err
+		},
+	}
+	if !porIssue {
+		tarefas = append(tarefas, func(ctx context.Context) error {
+			wlsBulk, erroBulk = cli.WorklogsEmMassa(ctx, p.Inicio.Add(-MargemBulk), func(lotes, wls int) {
+				prog(min(10+lotes*5, 85), fmt.Sprintf("%d worklogs lidos do Jira", wls))
+			})
+			return nil
+		})
+	}
+	if err := conc.Paralelo(ctx, tarefas...); err != nil {
+		return nil, "", err
+	}
+	porID := map[string]issueHoras{}
+	var ordem []string
+	for _, i := range encontradas {
+		conta := i.Fields.ContaEsforcoValor()
+		if conta == "" {
+			conta = params.SemConta
+		}
+		if _, ja := porID[i.ID]; !ja {
+			ordem = append(ordem, i.ID)
+		}
+		porID[i.ID] = issueHoras{i.Key, i.Fields.Summary, i.Fields.ProjetoChave(), i.Fields.TipoNome(), conta}
+	}
+	var (
+		pares []parHoras
+		info  string
+		err   error
+	)
+	switch {
+	case porIssue:
+		pares, err = coletarPorIssue(ctx, cli, porID, ordem, p, prog)
+	case erroBulk == nil:
+		pares = filtrarBulk(wlsBulk, porID, p)
+	default:
+		if ctx.Err() != nil {
+			return nil, "", ctx.Err()
+		}
+		var je *jira.Erro
+		if !asErro(erroBulk, &je) {
+			return nil, "", erroBulk
+		}
+		info = fmt.Sprintf("Modo em massa falhou (%v); usei uma chamada por issue.", erroBulk)
+		pares, err = coletarPorIssue(ctx, cli, porID, ordem, p, prog)
+	}
+	return pares, info, err
+}
+
+// Horas coleta os worklogs do período.
+//
+// Sem cobertura (ou forçar): modo bulk atual. Com lacunas: JQL por worklogDate + worklogs por issue
+// (não reutiliza /worklog/updated).
+func Horas(ctx context.Context, st *store.Store, cli *jira.Client, cfg params.Config, p params.Periodo, prog Progresso, forcar bool) (Resultado, error) {
+	eq, membros, err := prepararEquipe(ctx, st)
+	if err != nil {
 		return Resultado{}, err
+	}
+	if !eq.Ativa() {
+		err = st.ComTx(ctx, func(tx *sql.Tx) error {
+			if err := store.SubstituirWorklogsTx(tx, ctx, nil); err != nil {
+				return err
+			}
+			return store.GravarCoberturaTx(tx, ctx, SerieHoras, "", nil)
+		})
+		if err != nil {
+			return Resultado{}, err
+		}
+		prog(100, avisoSemEquipe)
+		return Resultado{Info: avisoSemEquipe}, nil
+	}
+
+	imp := JQLHoras(cfg, periodoSentinela, membros)
+	cob, err := st.LerCobertura(ctx, SerieHoras)
+	if err != nil {
+		return Resultado{}, err
+	}
+	pedido := IntervaloDoPeriodoJQL(p)
+	plano := PlanejarSync(intervalosStore(cob), cob.Impressao, imp, pedido, forcar)
+	if plano.Motivo == MotivoContido {
+		prog(100, "Horas: período já coberto")
+		return Resultado{Info: "período já coberto"}, nil
+	}
+
+	var (
+		pares []parHoras
+		info  string
+	)
+	usarBulk := plano.Substituir && cfg["horasModo"] != params.ModoPorIssue
+	if forcar {
+		prog(5, "Sincronia completa: buscando horas")
+	} else if usarBulk {
+		prog(5, "Buscando issues e worklogs em paralelo")
+	} else {
+		prog(5, "Horas: "+FormatarLacunas(plano.Lacunas))
+	}
+
+	if usarBulk {
+		pares, info, err = coletarHorasPeriodo(ctx, cli, cfg, p, membros, prog, true)
+		if err != nil {
+			return Resultado{}, err
+		}
+	} else {
+		for _, lac := range plano.Lacunas {
+			pl := PeriodoDaLacuna(lac)
+			parte, infoLac, err := coletarHorasPeriodo(ctx, cli, cfg, pl, membros, prog, false)
+			if err != nil {
+				return Resultado{}, err
+			}
+			pares = append(pares, parte...)
+			if infoLac != "" {
+				info = infoLac
+			}
+		}
+	}
+
+	lista := worklogsDaEquipe(pares, eq)
+	prog(92, fmt.Sprintf("%d worklogs; gravando", len(lista)))
+	novaCob := Fundir(coberturaApos(plano, intervalosStore(cob)))
+	err = st.ComTx(ctx, func(tx *sql.Tx) error {
+		if plano.Substituir {
+			if err := store.SubstituirWorklogsTx(tx, ctx, lista); err != nil {
+				return err
+			}
+		} else if err := store.MesclarWorklogsTx(tx, ctx, lista); err != nil {
+			return err
+		}
+		return store.GravarCoberturaTx(tx, ctx, SerieHoras, imp, paraStore(novaCob))
+	})
+	if err != nil {
+		return Resultado{}, err
+	}
+	if info == "" {
+		info = infoPlano(plano)
 	}
 	return Resultado{Linhas: len(lista), Info: info}, nil
 }

@@ -77,8 +77,16 @@ func (a *ambiente) esvaziarEquipe() {
 }
 
 func (a *ambiente) rodar(b Bloco) Resultado {
+	return a.rodarOp(b, false)
+}
+
+func (a *ambiente) rodarForcar(b Bloco) Resultado {
+	return a.rodarOp(b, true)
+}
+
+func (a *ambiente) rodarOp(b Bloco, forcar bool) Resultado {
 	a.t.Helper()
-	r, err := b(context.Background(), a.st, a.cli, a.cfg, a.p, semProgresso)
+	r, err := b(context.Background(), a.st, a.cli, a.cfg, a.p, semProgresso, forcar)
 	if err != nil {
 		a.t.Fatalf("coleta falhou: %v", err)
 	}
@@ -325,9 +333,13 @@ func TestHistoriasSubstituiTabelaEPagina(t *testing.T) {
 	if r := a.rodar(Historias); r.Linhas != 5 {
 		t.Fatalf("linhas = %d", r.Linhas)
 	}
+	a.fk.JQLs = nil
 	a.fk.Historias = a.fk.Historias[:1]
-	if r := a.rodar(Historias); r.Linhas != 1 {
-		t.Fatalf("linhas = %d", r.Linhas)
+	if r := a.rodar(Historias); len(a.fk.JQLs) != 0 || !strings.Contains(r.Info, "já coberto") {
+		t.Fatalf("sem forçar deveria reusar cobertura: info=%q jqls=%v", r.Info, a.fk.JQLs)
+	}
+	if r := a.rodarForcar(Historias); r.Linhas != 1 {
+		t.Fatalf("forçar linhas = %d", r.Linhas)
 	}
 	hs, _ := a.st.Historias(context.Background())
 	if len(hs) != 1 {
@@ -497,15 +509,15 @@ func TestRunnerTudoRegistraAndamentoEBloqueiaDuplicada(t *testing.T) {
 	r := NovoRunner(context.Background(), a.st, func() (*jira.Client, error) { return a.cli, nil })
 
 	r.ocupado.Lock() // simula coleta em andamento
-	if _, err := r.Iniciar(context.Background(), "tudo"); err != ErrEmAndamento {
+	if _, err := r.Iniciar(context.Background(), "tudo", false); err != ErrEmAndamento {
 		t.Fatalf("err = %v, queria ErrEmAndamento", err)
 	}
 	r.ocupado.Unlock()
 
-	if _, err := r.Iniciar(context.Background(), "nada"); err == nil {
+	if _, err := r.Iniciar(context.Background(), "nada", false); err == nil {
 		t.Fatal("bloco inválido deveria falhar")
 	}
-	id, err := r.Iniciar(context.Background(), "tudo")
+	id, err := r.Iniciar(context.Background(), "tudo", false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -533,7 +545,7 @@ func TestRunnerFalhaViraErroVisivel(t *testing.T) {
 	a := novoAmbiente(t)
 	a.fk.Falhas429 = 100 // o Jira nunca responde direito
 	r := NovoRunner(context.Background(), a.st, func() (*jira.Client, error) { return a.cli, nil })
-	if _, err := r.Iniciar(context.Background(), "testbugs"); err != nil {
+	if _, err := r.Iniciar(context.Background(), "testbugs", false); err != nil {
 		t.Fatal(err)
 	}
 	r.Aguardar()
@@ -546,7 +558,7 @@ func TestRunnerFalhaViraErroVisivel(t *testing.T) {
 func TestRunnerSemCredenciais(t *testing.T) {
 	a := novoAmbiente(t)
 	r := NovoRunner(context.Background(), a.st, func() (*jira.Client, error) { return nil, jira.ErrNaoConfigurado })
-	if _, err := r.Iniciar(context.Background(), "tudo"); err != jira.ErrNaoConfigurado {
+	if _, err := r.Iniciar(context.Background(), "tudo", false); err != jira.ErrNaoConfigurado {
 		t.Errorf("err = %v", err)
 	}
 	if r.JiraConfigurado() {
@@ -636,7 +648,7 @@ func TestRunnerTudoRodaOsBlocosEmParaleloRespeitandoOLimiteGlobal(t *testing.T) 
 	cli, _ := jira.NewClient(a.fk.URL(), "a@b.c", "tok", 3, jira.SemEspera())
 
 	r := NovoRunner(context.Background(), a.st, func() (*jira.Client, error) { return cli, nil })
-	if _, err := r.Iniciar(context.Background(), "tudo"); err != nil {
+	if _, err := r.Iniciar(context.Background(), "tudo", false); err != nil {
 		t.Fatal(err)
 	}
 	r.Aguardar()
@@ -661,7 +673,7 @@ func TestRunnerBlocoComFalhaNaoImpedeOsOutros(t *testing.T) {
 	a.fk.FalharSe = `type = "Test Bug"`
 
 	r := NovoRunner(context.Background(), a.st, func() (*jira.Client, error) { return a.cli, nil })
-	if _, err := r.Iniciar(context.Background(), "tudo"); err != nil {
+	if _, err := r.Iniciar(context.Background(), "tudo", false); err != nil {
 		t.Fatal(err)
 	}
 	r.Aguardar()

@@ -340,8 +340,8 @@ export const api = {
     request<Record<string, string>>('/equipe/resolver-account-ids', { method: 'POST' }),
 
   syncStatus: () => request<SyncStatus>('/sync/status'),
-  iniciarSync: (bloco: string) =>
-    request<SyncRun>('/sync', { method: 'POST', body: JSON.stringify({ bloco }) }),
+  iniciarSync: (bloco: string, forcar = false) =>
+    request<SyncRun>('/sync', { method: 'POST', body: JSON.stringify({ bloco, forcar }) }),
 
   mapaSlide: (de?: string, ate?: string) =>
     request<MapaSlide>(comQuery('/mapa-slide', { de, ate })),

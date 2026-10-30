@@ -346,7 +346,8 @@ func (s *Servidor) apiSyncStatus(w http.ResponseWriter, r *http.Request) {
 
 func (s *Servidor) apiSyncIniciar(w http.ResponseWriter, r *http.Request) {
 	var corpo struct {
-		Bloco string `json:"bloco"`
+		Bloco  string `json:"bloco"`
+		Forcar bool   `json:"forcar"`
 	}
 	if !lerJSON(w, r, &corpo) {
 		return
@@ -354,7 +355,7 @@ func (s *Servidor) apiSyncIniciar(w http.ResponseWriter, r *http.Request) {
 	if corpo.Bloco == "" {
 		corpo.Bloco = "tudo"
 	}
-	id, err := s.run.Iniciar(r.Context(), corpo.Bloco)
+	id, err := s.run.Iniciar(r.Context(), corpo.Bloco, corpo.Forcar)
 	switch {
 	case err == nil:
 	case errors.Is(err, coleta.ErrEmAndamento), errors.Is(err, jira.ErrNaoConfigurado):
