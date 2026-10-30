@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+!.env.example
+data/
+*.db
+*.db-*
+frontend/node_modules/
+frontend/dist/
+cmd/spa/dist/
+.cursor/
+**/__pycache__/
+*.md
+!README.md

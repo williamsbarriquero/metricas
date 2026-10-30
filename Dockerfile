@@ -1,20 +1,22 @@
 # Um processo só: o binário Go embute o React já compilado. Node não fica na imagem final.
-# Build a partir da raiz do repositório:
-#   docker build -f spa/Dockerfile -t metricas-spa .
+# Contexto = esta pasta (spa/). No Render, Root Directory = spa.
+#   docker build -t metricas-spa .
+# Na raiz do monorepo:
+#   docker build -f spa/Dockerfile -t metricas-spa spa
 
 FROM node:22-bookworm-slim AS frontend
-WORKDIR /src/spa/frontend
-COPY spa/frontend/package.json spa/frontend/package-lock.json ./
+WORKDIR /src/frontend
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
-COPY spa/frontend/ ./
+COPY frontend/ ./
 RUN npm run build
 
 FROM golang:1.26-bookworm AS build
-WORKDIR /src/spa
-COPY spa/go.mod spa/go.sum spa/main.go ./
-COPY spa/cmd ./cmd
-COPY spa/internal ./internal
-COPY --from=frontend /src/spa/frontend/dist/ ./cmd/spa/dist/
+WORKDIR /src
+COPY go.mod go.sum main.go ./
+COPY cmd ./cmd
+COPY internal ./internal
+COPY --from=frontend /src/frontend/dist/ ./cmd/spa/dist/
 ARG JIRA_URL=
 ARG JIRA_EMAIL=
 ARG JIRA_TOKEN=

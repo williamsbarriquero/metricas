@@ -27,12 +27,15 @@ cd spa
 
 ## Deploy
 
-Na raiz do repositório:
+Contexto do Docker = esta pasta (`spa/`). No Render, use Root Directory `spa`.
 
 ```bash
-docker build -f spa/Dockerfile -t metricas-spa .
+cd spa
+docker build -t metricas-spa .
 docker run --rm -p 8080:8080 -v metricas-data:/app/data -e JIRA_EMAIL -e JIRA_TOKEN metricas-spa
 ```
+
+Na raiz do monorepo: `docker build -f spa/Dockerfile -t metricas-spa spa`.
 
 A imagem final não tem Node. `ADDR` na imagem é `0.0.0.0:8080` para o container receber o Service. O processo não autentica usuários e não vai ganhar login: na máquina a escuta padrão é `127.0.0.1`; quem publicar o pod mantém o Service fora da internet pública, com autenticação na borda do cluster. Não há manifesto de Ingress neste repositório.
 
