@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "hooks": {
+    "stop": [
+      {
+        "command": "bun run .cursor/hooks/continuations/grind-loop.ts"
+      }
+    ],
+    "onPostEdit": [
+      {
+        "command": "bash .cursor/hooks/transforms/lint-on-save.sh"
+      }
+    ],
+    "onPreCommit": [
+      {
+        "command": "bash .cursor/hooks/guards/secret-scanner.sh"
+      }
+    ],
+    "onPreEdit": [
+      {
+        "command": "bash .cursor/hooks/guards/write-file-guard.sh"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "bash .cursor/hooks/guards/shell-guard.sh"
+      }
+    ],
+    "beforeMCPExecution": [
+      {
+        "command": "bash .cursor/hooks/guards/mcp-guard.sh"
+      }
+    ]
+  }
+}

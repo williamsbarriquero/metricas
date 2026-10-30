@@ -1,0 +1,26 @@
+---
+description: "Boas práticas para migrações e modificações em banco de dados"
+globs: ["**/*.sql", "**/migrations/**", "**/db/migrations/*"]
+alwaysApply: false
+---
+
+# Padrões de Migração Segura de Banco de Dados
+
+## Contexto
+
+Define as regras e boas práticas obrigatórias para criação e alteração de tabelas/esquemas de banco de dados (SQL, Flyway, Liquibase, migrations nativas).
+
+## Instruções
+
+Ao criar ou alterar arquivos de migração de banco de dados:
+
+- **Estratégia de Rollback**: Toda migração incremental (Up) DEVE possuir um script correspondente de reversão (Down/Rollback) válido e testável.
+- **Evitar Locks Longos**:
+  - Nunca execute operações bloqueantes diretamente em tabelas grandes em produção (como adicionar colunas com valores default sem `NULL`, ou criar índices de forma simples).
+  - Em PostgreSQL, crie índices concorrentemente: `CREATE INDEX CONCURRENTLY idx_name ON table(col)`.
+- **Estratégia Expand-and-Contract**:
+  - Para alterações destrutivas (remover colunas, alterar tipos de dados, renomear tabelas), faça o processo em etapas:
+    1. *Expand*: Adicione a nova coluna/tabela e mantenha o código antigo escrevendo em ambas.
+    2. *Migrate*: Copie os dados históricos da antiga para a nova.
+    3. *Contract*: Altere o código para ler e gravar apenas na nova estrutura, e em seguida exclua a antiga em uma migração separada.
+- **Chaves Estrangeiras (FKs)**: Sempre crie chaves estrangeiras com a criação do índice correspondente na coluna estrangeira para evitar table scans lentos nas queries de junção.

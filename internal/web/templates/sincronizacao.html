@@ -1,0 +1,49 @@
+{{define "conteudo"}}
+{{if not .JiraOK}}
+<div class="alerta alerta-erro">{{icone "alerta"}}<div><strong>Credenciais do Jira não configuradas.</strong>
+  Preencha <code>JIRA_EMAIL</code> e <code>JIRA_TOKEN</code> no arquivo <code>.env</code> (ao lado do executável) e reinicie o programa.</div></div>
+{{end}}
+
+<section class="cartao">
+  <header class="cartao-cab"><div><h2>Atualizar dados do Jira</h2>
+    <p>Roda em segundo plano; você pode navegar enquanto isso. Cada bloco substitui os dados anteriores dele.</p></div></header>
+  <form method="post" action="/sincronizacao" class="acoes">
+    <button class="botao" name="bloco" value="tudo" {{if or .EmAndamento (not .JiraOK)}}disabled{{end}}>{{icone "sincronizacao"}} Atualizar tudo</button>
+    {{range .Blocos}}<button class="botao botao-contorno" name="bloco" value="{{.ID}}" {{if or $.EmAndamento (not $.JiraOK)}}disabled{{end}}>{{.Rotulo}}</button>{{end}}
+  </form>
+
+  {{with .Atual}}
+  <div class="andamento" data-sync-ativa data-sync-poll>
+    <div class="andamento-linha"><strong id="sync-etapa">{{.Rotulo}}: {{.Etapa}}</strong><span id="sync-pct" class="suave">{{.Progresso}}%</span></div>
+    <progress id="sync-barra" max="100" value="{{.Progresso}}"></progress>
+    <p class="suave pequeno"><span id="sync-linhas">{{numero .Linhas}}</span> linhas gravadas · período {{dataBR .PeriodoInicio}} a {{dataBR .PeriodoFim}}</p>
+  </div>
+  {{end}}
+</section>
+
+<section class="cartao">
+  <header class="cartao-cab"><div><h2>Histórico</h2><p>Últimas 20 execuções. Abra uma linha para ver os detalhes e avisos.</p></div></header>
+  <div class="rolagem">
+    <table class="tabela">
+      <thead><tr><th>Início</th><th>Bloco</th><th>Período</th><th>Status</th><th class="n">Linhas</th><th class="n">Duração</th></tr></thead>
+      <tbody>
+        {{range .Historico}}
+        <tr>
+          <td>{{.InicioTxt}}</td>
+          <td>{{.Rotulo}}</td>
+          <td class="suave">{{if .PeriodoInicio}}{{dataBR .PeriodoInicio}} a {{dataBR .PeriodoFim}}{{end}}</td>
+          <td>{{if eq .Status "ok"}}<span class="selo selo-ok">Concluída</span>{{else if eq .Status "erro"}}<span class="selo selo-erro">Erro</span>{{else}}<span class="selo selo-suave">Em andamento</span>{{end}}</td>
+          <td class="n">{{numero .Linhas}}</td>
+          <td class="n">{{.Duracao}}</td>
+        </tr>
+        {{if .Mensagem}}
+        <tr class="detalhe"><td colspan="6"><details><summary>{{if eq .Status "erro"}}Ver erro{{else}}Ver detalhes{{end}}</summary><pre class="{{if eq .Status "erro"}}texto-erro{{end}}">{{.Mensagem}}</pre></details></td></tr>
+        {{end}}
+        {{else}}
+        <tr><td colspan="6" class="vazio">Nenhuma coleta executada ainda.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+{{end}}

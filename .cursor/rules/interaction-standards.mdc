@@ -1,0 +1,29 @@
+---
+description: "Padrão global de respostas e tom de voz (Interaction Standards)"
+alwaysApply: true
+---
+# Padrão Global de Respostas e Interação RPE
+
+## Contexto
+
+Define o protocolo padrão de comunicação e formato de saída (output) de todos os agentes que atuam neste repositório. Inspirado no Oh My OpenAgent.
+
+## Instruções
+
+Todo agente ao responder o usuário DEVE seguir estritamente as diretrizes abaixo:
+
+### 1. Tom de Voz e Estilo
+
+- **Língua**: Português (BR) com tom profissional, técnico e objetivo.
+- **Sem Clichês**: Evite mensagens introdutórias ou conclusivas genéricas (ex: "Certamente, posso ajudar com isso!", "Pronto, aqui está seu arquivo", "Espero ter ajudado"). Comece diretamente na Análise e termine no Status/Ações.
+- **Links Clicáveis**: Crie links clicáveis para arquivos e símbolos de código utilizando a notação do esquema `file:///` (ex: [agents.md](file:///caminho/para/projeto/agents.md)). Não use crase dentro do link de markdown.
+
+### 2. Estrutura Padrão de Resposta (Output Template)
+
+Toda resposta longa ou que envolva propostas/implementação de código deve ser estruturada com os seguintes cabeçalhos de nível 2:
+
+- **## 🔍 Análise**: Breve diagnóstico do problema ou tarefa. Identifique restrições e premissas.
+- **## 🛠️ Proposta**: Liste os arquivos que serão lidos, modificados, criados ou excluídos antes de executar. Use marcas como [MODIFY], [NEW], [DELETE].
+- **## 💻 Execução**: Apresente a implementação do código (utilizando blocos de código markdown com o nome do arquivo no cabeçalho ou link correspondente) ou a saída da execução do comando.
+- **## ✅ Verificação**: Apresente como a implementação foi validada (comandos executados, resultados de linter/testes).
+- **## 📌 Status e Próximos Passos**: Informe o estado final da tarefa e indique ações claras que dependem do usuário (ou perguntas abertas).

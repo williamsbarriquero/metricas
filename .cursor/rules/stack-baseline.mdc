@@ -1,0 +1,53 @@
+---
+description: "Comandos de verificação e Definition of Done por stack tecnológica"
+alwaysApply: true
+---
+
+# Stack Baseline RPE
+
+## Contexto
+
+SSOT dos comandos de verificação **deste repositório** (Go 1.26 + SPA React/Vite). Referenciado por `agents.md`, `tdd-workflow.mdc` e agentes de implementação.
+
+Java não está instalado. Não há ESLint, Prettier, chi nem `golangci-lint` (sem `.golangci.yml`). O lint do Go é `go vet`. O HTTP usa `net/http.ServeMux`. No front, o lint é oxlint (type-aware) e o formatador é oxfmt.
+
+## Instruções
+
+Execute os comandos da stack que o cambio tocou, no diretório indicado, antes de declarar conclusão.
+
+### Go
+
+Na raiz do módulo (pasta do `go.mod`):
+
+- Format: `gofmt -w .`
+- Lint: `go vet ./...`
+- Testes: `go test ./...`
+
+### Frontend (React / Vite)
+
+Em `frontend/`:
+
+- Lint: `npm run lint`
+- Format: `npm run fmt:check`
+- Type-check: `npx tsc -b`
+- Testes: `npm test`
+
+`npm test` executa `vitest run`. `npm run fmt` escreve. oxlint e oxfmt são devDependencies; a imagem só roda `npm run build`.
+
+### RPE Harness / Shell
+
+Só quando a mudança for no harness (`.cursor/`, `scripts/`), não como gate do produto:
+
+- Validação: `./scripts/validate.sh`
+- Lint shell: `shellcheck scripts/*.sh`
+
+## Definition of Done
+
+1. Código compila sem erros de tipagem/compilação.
+2. Suíte de testes da stack tocada retorna exit code `0`.
+3. Linter e formatador aplicáveis retornam exit code `0`.
+4. Modificações prontas para commit quando solicitado pelo usuário (Conventional Commits).
+
+## Verificação
+
+Comando consolidado: `@validate-stack.md`

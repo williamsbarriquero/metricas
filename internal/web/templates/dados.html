@@ -1,0 +1,60 @@
+{{define "conteudo"}}
+<nav class="abas" aria-label="Abas de dados">
+  {{range .Abas}}<a href="/dados/{{.ID}}" class="{{if eq $.Aba.ID .ID}}ativa{{end}}">{{.Rotulo}}</a>{{end}}
+</nav>
+
+<form class="filtros" method="get" action="/dados/{{.Aba.ID}}" data-auto-submit>
+  <label class="campo">Espaço
+    <select name="espaco" class="largo">{{range .OpcoesEspaco}}<option value="{{.Valor}}" {{if .Marcada}}selected{{end}}>{{.Rotulo}}</option>{{end}}</select>
+  </label>
+  <label class="campo">Mês <input type="month" name="mes" value="{{.Mes}}"></label>
+  <label class="campo">Buscar <input type="search" name="q" value="{{.Q}}" placeholder="chave, resumo..."></label>
+  {{if eq .Aba.ID "testbugs"}}
+  <label class="campo">Fluxo
+    <select name="fluxo">
+      <option value="">Todos</option>
+      <option value="Principal" {{if eq .Fluxo "Principal"}}selected{{end}}>Principal</option>
+      <option value="Alternativo" {{if eq .Fluxo "Alternativo"}}selected{{end}}>Alternativo</option>
+      <option value="Exceção" {{if eq .Fluxo "Exceção"}}selected{{end}}>Exceção</option>
+    </select>
+  </label>
+  {{end}}
+  {{if eq .Aba.ID "horas"}}
+  <label class="campo">Conta <input type="text" name="conta" value="{{.Conta}}" placeholder="Sustentação..."></label>
+  <label class="campo">Autor <input type="text" name="autor" value="{{.Autor}}"></label>
+  <label class="interruptor-rotulo"><input type="checkbox" name="equipe" value="1" {{if .SoEquipe}}checked{{end}}> Só Equipe</label>
+  {{end}}
+  {{if or (eq .Aba.ID "criados") (eq .Aba.ID "resolvidos") (eq .Aba.ID "estoque") (eq .Aba.ID "historias")}}
+  <label class="campo">Tipo <input type="text" name="tipo" value="{{.Tipo}}" placeholder="História, Incident..."></label>
+  {{end}}
+  <noscript><button class="botao">Aplicar</button></noscript>
+  <p class="periodo-info">{{numero .Total}} linha(s){{if gt .Paginas 1}} · página {{numero .Pagina}} de {{numero .Paginas}}{{end}}
+    <br><a href="{{.URLCSV}}">{{icone "download"}} CSV</a></p>
+</form>
+
+<section class="cartao">
+  <div class="rolagem">
+    <table class="tabela">
+      <thead><tr>{{range .Colunas}}<th class="{{.Classe}}">{{.Titulo}}</th>{{end}}</tr></thead>
+      <tbody>
+        {{range .Linhas}}
+        <tr {{if .Apagada}}class="apagada"{{end}}>
+          {{range .Celulas}}
+          <td class="{{.Classe}}">{{if .Link}}<a href="{{.Link}}" target="_blank" rel="noopener">{{.Texto}}</a>{{else}}{{.Texto}}{{end}}{{if .Selo}} <span class="selo selo-contorno">{{.Selo}}</span>{{end}}</td>
+          {{end}}
+        </tr>
+        {{else}}
+        <tr><td colspan="{{len .Colunas}}" class="vazio">Nenhuma linha com esse filtro. Rode a coleta na tela Sincronização se ainda não houver dados.</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{if gt .Paginas 1}}
+  <div class="acoes" style="margin-top:1rem">
+    {{if .URLAnterior}}<a class="botao botao-contorno" href="{{.URLAnterior}}">Anterior</a>{{end}}
+    <span class="suave">{{numero .Pagina}} / {{numero .Paginas}}</span>
+    {{if .URLProxima}}<a class="botao botao-contorno" href="{{.URLProxima}}">Próxima</a>{{end}}
+  </div>
+  {{end}}
+</section>
+{{end}}

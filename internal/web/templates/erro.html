@@ -1,0 +1,8 @@
+{{define "conteudo"}}
+<section class="cartao centro">
+  <p class="codigo-erro">{{.Codigo}}</p>
+  <h2>{{.Titulo}}</h2>
+  {{if .Mensagem}}<p class="suave">{{.Mensagem}}</p>{{end}}
+  <p><a class="botao" href="/">Voltar ao Dashboard</a></p>
+</section>
+{{end}}

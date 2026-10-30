@@ -1,0 +1,18 @@
+---
+description: "Guardrails de segurança"
+alwaysApply: true
+---
+# Guardrails de Segurança RPE
+
+## Contexto
+
+Regras essenciais para garantir a segurança da aplicação e do ambiente. Inspirado nos Guard Hooks do OmO.
+
+## Instruções
+
+- **Proibições absolutas**: Hardcode de credenciais, `eval()`, `exec()` dinâmico, queries SQL sem parametrização.
+- **Validação obrigatória**: Todo input externo deve ser validado/sanitizado (ex: Zod/Joi).
+- **CORS e headers**: Configuração estrita e segura por ambiente.
+- **Dependências**: Nunca adicionar pacotes sem verificar licença e vulnerabilidades conhecidas.
+- **Detecção de Segredos**: Nunca comitar segredos. Padrão de regex proibido (usado em verificações): `/(password|secret|api[_-]?key|token)\s*[:=]\s*['"][^'"]+['"]/gi`
+- **File write guards**: Sempre alerte o usuário antes de sobrescrever arquivos críticos como `.env`, `package.json` ou configs de CI/CD.

@@ -1,0 +1,56 @@
+{{define "conteudo"}}
+<p class="suave">Período <strong>{{.Inicio}}</strong> a <strong>{{.Fim}}</strong>. Entra quem está na Equipe com Incluir ligado, mesmo sem lançamento. Clique na pessoa para abrir os lançamentos. Os grupos seguem a ordem de coordenadores da Equipe.</p>
+{{if not .Pessoas}}
+<section class="cartao"><p>Nenhuma pessoa com Incluir ligado. Cadastre a Equipe e sincronize as horas.</p></section>
+{{else}}
+{{range .Grupos}}
+<h2 class="secao-horas">{{.Rotulo}}</h2>
+{{range .Pessoas}}
+<details class="cartao pessoa-horas">
+  <summary class="cartao-cab">
+    <div class="pessoa-ident">
+      <span class="chevron">{{icone "chevron"}}</span>
+      <div>
+        <h2>{{.Nome}}</h2>
+        <p>{{if .AccountID}}<span class="suave">{{.AccountID}}</span> · {{end}}Total {{horasMin .Total}}</p>
+      </div>
+    </div>
+  </summary>
+  <h3>Por mês</h3>
+  <div class="rolagem">
+    <table class="tabela">
+      <thead><tr><th>Mês</th><th class="n">Horas</th></tr></thead>
+      <tbody>{{range .Meses}}<tr><td>{{.Rotulo}}</td><td class="n">{{horasMin .Horas}}</td></tr>{{end}}</tbody>
+    </table>
+  </div>
+  <h3>Por conta de esforço</h3>
+  {{if not .Contas}}<p class="suave">Sem lançamentos no período.</p>{{else}}
+  <div class="rolagem">
+    <table class="tabela">
+      <thead><tr><th>Conta</th><th class="n">Horas</th></tr></thead>
+      <tbody>{{range .Contas}}<tr><td>{{.Rotulo}}</td><td class="n">{{horasMin .Horas}}</td></tr>{{end}}</tbody>
+    </table>
+  </div>
+  {{end}}
+  <h3>Lançamentos</h3>
+  {{if not .Lancamentos}}<p class="suave">Nenhum lançamento no período.</p>{{else}}
+  <div class="rolagem rolagem-alta">
+    <table class="tabela">
+      <thead><tr><th>Data</th><th>Espaço</th><th>Issue</th><th>Resumo</th><th>Conta</th><th class="n">Horas</th></tr></thead>
+      <tbody>
+        {{range .Lancamentos}}
+        <tr>
+          <td>{{.Data}}</td><td>{{.Espaco}}</td>
+          <td>{{if .Link}}<a href="{{.Link}}" target="_blank" rel="noopener">{{.Chave}}</a>{{else}}{{.Chave}}{{end}}</td>
+          <td class="quebra">{{.Resumo}}</td><td>{{.Conta}}</td><td class="n">{{horasMin .Horas}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+</details>
+{{end}}
+{{end}}
+{{end}}
+{{end}}

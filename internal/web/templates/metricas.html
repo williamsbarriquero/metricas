@@ -1,0 +1,86 @@
+{{define "conteudo"}}
+{{with .ErroConsulta}}<div class="alerta alerta-erro">{{icone "alerta"}}<div>{{.}}</div></div>{{end}}
+
+<form class="filtros" method="get" action="/metricas" data-auto-submit>
+  <label class="campo">De <input type="month" name="de" value="{{.MesDe}}"></label>
+  <label class="campo">Até <input type="month" name="ate" value="{{.MesAte}}"></label>
+  {{if .Custom}}<a class="botao botao-fantasma" href="{{.URLLimpar}}">Período das Configurações</a>{{end}}
+  <noscript><button class="botao">Aplicar</button></noscript>
+  <a class="botao botao-contorno botao-peq" href="{{.URLCSV}}">{{icone "download"}} CSV (todas as seções)</a>
+  <p class="periodo-info">
+    Período: {{dataBR .Res.Periodo.Inicio}} a {{dataBR .Res.Periodo.Fim}}<br>
+    {{if .Res.AtualizadoEm}}Última coleta: {{dataHoraISO .Res.AtualizadoEm}}{{else}}Nenhuma coleta concluída{{end}}
+  </p>
+</form>
+
+{{range .Res.Avisos}}<div class="alerta alerta-info">{{icone "info"}}<div>{{.}}</div></div>{{end}}
+
+<nav class="abas" aria-label="Seções">
+  <a href="#t1">1. Histórias vs Test Bugs</a>
+  <a href="#t2">2. Horas por Conta de Esforço</a>
+  <a href="#t3">3. Vazão de Incidentes</a>
+</nav>
+
+<div class="titulo-bloco" id="t1"><h2><span class="selo">T1</span> 1. Histórias vs Test Bugs (por Espaço e mês)</h2>
+  <p class="suave">Espaços do filtro “Projetos (Espaços) - Histórias e Test Bugs” das Configurações.</p></div>
+{{range .T1}}
+<section class="cartao">
+  <header class="cartao-cab"><div><h2>Espaço: {{.B.Rotulo}}</h2>{{if not .B.TemDados}}<p class="suave">Sem dados coletados no período.</p>{{end}}</div>
+    <a class="botao botao-contorno botao-peq" href="/dados/historias?espaco={{.B.Chave}}">Ver histórias</a></header>
+  <div class="duas-colunas">
+    <div class="rolagem">
+      <table class="tabela">
+        <thead><tr><th>Mês</th><th class="n">Histórias</th><th class="n">Test Bugs</th><th class="n">Test Bugs / Histórias</th><th class="n">Fluxo Principal</th><th class="n">Fluxo Alternativo</th><th class="n">Fluxo Exceção</th></tr></thead>
+        <tbody>
+          {{range .B.T1.Meses}}<tr><td>{{.Mes}}</td><td class="n">{{numero .Historias}}</td><td class="n">{{numero .TestBugs}}</td><td class="n">{{pct .Razao}}</td><td class="n">{{numero .FluxoPrincipal}}</td><td class="n">{{numero .FluxoAlternativo}}</td><td class="n">{{numero .FluxoExcecao}}</td></tr>{{end}}
+          {{with .B.T1.Total}}<tr class="total"><td>Período</td><td class="n">{{numero .Historias}}</td><td class="n">{{numero .TestBugs}}</td><td class="n">{{pct .Razao}}</td><td class="n">{{numero .FluxoPrincipal}}</td><td class="n">{{numero .FluxoAlternativo}}</td><td class="n">{{numero .FluxoExcecao}}</td></tr>{{end}}
+        </tbody>
+      </table>
+    </div>
+    {{if .Grafico}}{{.Grafico}}{{else}}{{template "semDados" "Sem dados para o gráfico."}}{{end}}
+  </div>
+</section>
+{{else}}{{template "semDados" "Nenhum Espaço habilitado para Histórias e Test Bugs."}}{{end}}
+
+<div class="titulo-bloco" id="t2"><h2><span class="selo">T2</span> 2. Horas por Conta de Esforço (por Espaço e mês, em horas)</h2>
+  <p class="suave">Só horas das pessoas da Equipe. Total = Sustentação + Evolução + Overhead + Sem conta (Recesso fica de fora).</p></div>
+{{range .T2}}
+<section class="cartao">
+  <header class="cartao-cab"><div><h2>Espaço: {{.B.Rotulo}}</h2>{{if not .B.TemDados}}<p class="suave">Sem dados coletados no período.</p>{{end}}</div>
+    <a class="botao botao-contorno botao-peq" href="/dados/horas?espaco={{.B.Chave}}&amp;equipe=1">Ver worklogs</a></header>
+  <div class="duas-colunas">
+    <div class="rolagem">
+      <table class="tabela">
+        <thead><tr><th>Mês</th><th class="n">Sustentação</th><th class="n">Evolução</th><th class="n">Overhead</th><th class="n">Sem conta</th><th class="n">Recesso (excluído)</th><th class="n">Total (sem Recesso)</th><th class="n">Total (h:mm)</th></tr></thead>
+        <tbody>
+          {{range .B.T2.Meses}}<tr><td>{{.Mes}}</td><td class="n">{{decimal .Sustentacao 1}}</td><td class="n">{{decimal .Evolucao 1}}</td><td class="n">{{decimal .Overhead 1}}</td><td class="n">{{decimal .SemConta 1}}</td><td class="n">{{decimal .Recesso 1}}</td><td class="n">{{decimal .Total 1}}</td><td class="n">{{horasMin .Total}}</td></tr>{{end}}
+          {{with .B.T2.Total}}<tr class="total"><td>Período</td><td class="n">{{decimal .Sustentacao 1}}</td><td class="n">{{decimal .Evolucao 1}}</td><td class="n">{{decimal .Overhead 1}}</td><td class="n">{{decimal .SemConta 1}}</td><td class="n">{{decimal .Recesso 1}}</td><td class="n">{{decimal .Total 1}}</td><td class="n">{{horasMin .Total}}</td></tr>{{end}}
+        </tbody>
+      </table>
+    </div>
+    {{if .Grafico}}{{.Grafico}}{{else}}{{template "semDados" "Sem horas da Equipe para o gráfico."}}{{end}}
+  </div>
+</section>
+{{else}}{{template "semDados" "Nenhum Espaço com horas no período."}}{{end}}
+
+<div class="titulo-bloco" id="t3"><h2><span class="selo">T3</span> 3. Vazão de Incidentes (por Espaço e mês)</h2>
+  <p class="suave">Vazão % = Resolvidos / Criados x 100. Estoque = cards abertos no fim do mês (o total é o último mês, não a soma). Espaços do filtro “Projetos (Espaços) - Incidentes”.</p></div>
+{{range .T3}}
+<section class="cartao">
+  <header class="cartao-cab"><div><h2>Espaço: {{.B.Rotulo}}</h2>{{if not .B.TemDados}}<p class="suave">Sem dados coletados no período.</p>{{end}}</div>
+    <div class="acoes"><a class="botao botao-contorno botao-peq" href="/dados/criados?espaco={{.B.Chave}}">Criados</a><a class="botao botao-contorno botao-peq" href="/dados/resolvidos?espaco={{.B.Chave}}">Resolvidos</a><a class="botao botao-contorno botao-peq" href="/dados/estoque?espaco={{.B.Chave}}">Estoque</a></div></header>
+  <div class="duas-colunas">
+    <div class="rolagem">
+      <table class="tabela">
+        <thead><tr><th>Mês</th><th class="n">Criados</th><th class="n">Resolvidos</th><th class="n">Estoque</th><th class="n">Vazão (%)</th></tr></thead>
+        <tbody>
+          {{range .B.T3.Meses}}<tr><td>{{.Mes}}</td><td class="n">{{numero .Criados}}</td><td class="n">{{numero .Resolvidos}}</td><td class="n">{{numero .Estoque}}</td><td class="n">{{pctDireto .Vazao}}</td></tr>{{end}}
+          {{with .B.T3.Total}}<tr class="total"><td>Período</td><td class="n">{{numero .Criados}}</td><td class="n">{{numero .Resolvidos}}</td><td class="n">{{numero .Estoque}}</td><td class="n">{{pctDireto .Vazao}}</td></tr>{{end}}
+        </tbody>
+      </table>
+    </div>
+    {{if .Grafico}}{{.Grafico}}{{else}}{{template "semDados" "Sem dados para o gráfico."}}{{end}}
+  </div>
+</section>
+{{else}}{{template "semDados" "Nenhum Espaço habilitado para Incidentes."}}{{end}}
+{{end}}

@@ -1,0 +1,6 @@
+{
+  "version": 1,
+  "installedAt": "2026-10-29T10:30:16Z",
+  "mode": "explicit",
+  "stacks": ["go","react"]
+}

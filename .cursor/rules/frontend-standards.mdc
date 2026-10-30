@@ -1,0 +1,22 @@
+---
+description: "Ativa padrões frontend ao editar a SPA React/Vite"
+globs: ["**/*.tsx", "**/*.jsx"]
+alwaysApply: false
+---
+
+# Padrões Frontend RPE
+
+## Ativação
+
+Ao editar a SPA (`.tsx`, `.jsx`), leia a skill **`frontend-mastery`** — conteúdo canônico em `.cursor/knowledge/stacks/frontend.md`.
+
+Para utilitários `.ts` compartilhados, combine com `typescript.mdc` quando aplicável.
+
+## Verificação
+
+Em `frontend/`, conforme `stack-baseline.mdc`:
+
+- `npm run lint`
+- `npm run fmt:check`
+- `npx tsc -b`
+- `npm test`

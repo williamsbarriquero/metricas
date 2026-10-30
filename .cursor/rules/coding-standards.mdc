@@ -1,0 +1,21 @@
+---
+description: "Padrões de codificação universais"
+alwaysApply: true
+---
+# Padrões de Codificação RPE
+
+## Contexto
+
+Define os padrões de código, nomenclatura e estrutura a serem seguidos em todo o projeto.
+
+## Instruções
+
+- **Nomenclatura**: `camelCase` para variáveis/funções, `PascalCase` para classes/tipos/componentes, `SCREAMING_SNAKE` para constantes.
+- **Imports**: Ordenação por grupo (stdlib → external → internal → relative), usar barrels imports quando disponíveis.
+- **Error handling**: Sempre tipar erros, nunca engolir erros silenciosamente (never swallow silently), pattern `Result` preferido.
+- **Logging**: Nível estruturado (debug/info/warn/error), sempre com contexto.
+- **Documentação**: JSDoc/TSDoc obrigatório para APIs públicas, comentários inline para explicar o "porquê" e não o "o quê".
+
+## Verificação (Command-First)
+
+Comandos deste repositório: `stack-baseline.mdc` e `agents.md` (Go: `gofmt`, `go vet`, `go test`; front em `frontend/`: `npm run lint`, `npm run fmt:check`, `npx tsc -b`, `npm test`).

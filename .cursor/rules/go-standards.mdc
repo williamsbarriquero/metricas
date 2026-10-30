@@ -1,0 +1,19 @@
+---
+description: "Ativa padrões Go ao editar arquivos .go"
+globs: ["**/*.go"]
+alwaysApply: false
+---
+
+# Padrões Go RPE
+
+## Ativação
+
+Ao editar arquivos `.go`, leia a skill **`go-mastery`** — conteúdo canônico em `.cursor/knowledge/stacks/go.md`.
+
+## Verificação
+
+Na raiz do módulo (`go.mod`):
+
+- `gofmt -w .`
+- `go vet ./...`
+- `go test ./...`

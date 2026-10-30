@@ -1,0 +1,61 @@
+{{define "conteudo"}}
+<section class="cartao">
+  <div class="barra">
+    <form method="get" action="/equipe" class="busca">
+      <input type="search" name="q" value="{{.Q}}" placeholder="Buscar pessoa…" aria-label="Buscar pessoa">
+      <select name="coord" aria-label="Coordenador" onchange="this.form.submit()">
+        <option value="">Todos</option>
+        {{range .OpcoesCoord}}
+        <option value="{{.}}" {{if eq $.Coord .}}selected{{end}}>{{.}}</option>
+        {{end}}
+        <option value="__sem__" {{if eq $.Coord "__sem__"}}selected{{end}}>Sem coordenador</option>
+      </select>
+    </form>
+    <span class="selo selo-suave">{{.Ativos}} incluída(s) de {{.Total}}</span>
+    <div class="acoes">
+      <form method="post" action="/equipe/resolver-ids" class="inline">
+        <button class="botao botao-contorno" title="Preenche o Account ID de quem só tem e-mail ou nome">{{icone "varinha"}} Resolver Account IDs</button>
+      </form>
+      <form method="post" action="/equipe/padrao" class="inline">
+        <button class="botao botao-contorno" title="Adiciona quem da lista padrão ainda não está na Equipe e atualiza o coordenador de quem já está">{{icone "mais"}} Completar com a lista padrão</button>
+      </form>
+      <a class="botao" href="/equipe/novo">{{icone "mais"}} Adicionar pessoa</a>
+    </div>
+  </div>
+
+  <div class="rolagem">
+    <table class="tabela">
+      <thead><tr><th style="width:5rem">Incluir</th><th>E-mail ou nome</th><th>Coordenador</th><th>Account ID</th><th>Espaços</th><th>Observação</th><th style="width:6rem"></th></tr></thead>
+      <tbody>
+        {{range .Secoes}}
+        <tr class="linha-secao"><td colspan="7">{{.Rotulo}}</td></tr>
+        {{range .Membros}}
+        <tr class="{{if not .Incluir}}apagada{{end}}">
+          <td>
+            <form method="post" action="/equipe/{{.ID}}/alternar" class="inline">
+              <button class="interruptor {{if .Incluir}}ligado{{end}}" role="switch" aria-checked="{{if .Incluir}}true{{else}}false{{end}}" aria-label="Incluir nas horas" title="{{if .Incluir}}Incluída nas horas{{else}}Fora das horas{{end}}"></button>
+            </form>
+          </td>
+          <td><strong>{{if .Nome}}{{.Nome}}{{else}}—{{end}}</strong></td>
+          <td>{{if .Coordenador}}{{.Coordenador}}{{else}}<span class="suave">—</span>{{end}}</td>
+          <td class="mono suave" title="{{.AccountID}}">{{if .AccountID}}{{.AccountID}}{{else}}—{{end}}</td>
+          <td>{{if .Espacos}}{{range lista .Espacos}}<span class="selo selo-contorno">{{.}}</span> {{end}}{{else}}<span class="suave">Todos</span>{{end}}</td>
+          <td class="suave">{{.Observacao}}</td>
+          <td>
+            <div class="acoes direita">
+              <a class="botao-icone" href="/equipe/{{.ID}}/editar" aria-label="Editar" title="Editar">{{icone "editar"}}</a>
+              <form method="post" action="/equipe/{{.ID}}/remover" class="inline" data-confirm="Remover {{if .Nome}}{{.Nome}}{{else}}{{.AccountID}}{{end}}? A pessoa deixa de contar nas horas. Para manter o cadastro, desligue “Incluir”.">
+                <button class="botao-icone perigo" aria-label="Remover" title="Remover">{{icone "lixeira"}}</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {{end}}
+        {{else}}
+        <tr><td colspan="7" class="vazio">{{if .Total}}Nenhuma pessoa encontrada.{{else}}Ninguém cadastrado ainda. Adicione as pessoas para liberar a métrica de horas.{{end}}</td></tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+{{end}}

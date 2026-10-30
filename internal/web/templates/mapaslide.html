@@ -1,0 +1,95 @@
+{{define "conteudo"}}
+{{with .ErroConsulta}}<div class="alerta alerta-erro">{{icone "alerta"}}<div>{{.}}</div></div>{{end}}
+
+{{template "painelSlide" .}}
+
+<form class="filtros" method="get" action="/mapa-slide" data-auto-submit>
+  <label class="campo">Grupo
+    <select name="grupo" class="largo">{{range .Opcoes}}<option value="{{.Valor}}" {{if .Marcada}}selected{{end}}>{{.Rotulo}}</option>{{end}}</select>
+  </label>
+  <label class="campo">Buscar <input type="search" name="q" value="{{.Q}}" placeholder="HPAY_T1, 78,6%..."></label>
+  <label class="campo">De <input type="month" name="de" value="{{.MesDe}}"></label>
+  <label class="campo">Até <input type="month" name="ate" value="{{.MesAte}}"></label>
+  {{if .Custom}}<a class="botao botao-fantasma" href="{{.URLLimpar}}">Período das Configurações</a>{{end}}
+  <noscript><button class="botao">Aplicar</button></noscript>
+  <p class="periodo-info">{{numero .Mostrados}} de {{numero .Total}} marcadores{{if .SemValor}} · {{numero .SemValor}} sem valor (viram “-” no Slide){{end}}<br>
+    <a href="{{.URLCSV}}">{{icone "download"}} CSV</a> · <a href="{{.URLJSON}}">JSON</a></p>
+</form>
+
+{{range .Grupos}}
+<section class="cartao">
+  <header class="cartao-cab"><div><h2>{{.Titulo}}</h2></div></header>
+  <div class="rolagem">
+    <table class="tabela tabela-mapa">
+      <thead><tr><th>Marcador (copie para o Slide modelo)</th><th class="n">Valor atual</th><th>Origem</th></tr></thead>
+      <tbody>
+        {{range .Secoes}}
+        {{if .Titulo}}<tr class="linha-secao"><td colspan="3">{{.Titulo}}</td></tr>{{end}}
+        {{range .Itens}}<tr><td><code class="copiavel" data-copiar title="Clique para copiar">{{.Chave}}</code></td><td class="n">{{if .Valor}}{{.Valor}}{{else}}<span class="suave">–</span>{{end}}</td><td class="suave">{{.Origem}}</td></tr>{{end}}
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+{{else}}{{template "semDados" "Nenhum marcador encontrado com esse filtro."}}{{end}}
+{{end}}
+
+{{define "painelSlide"}}
+{{with .Slide}}
+<section class="cartao">
+  <header class="cartao-cab">
+    <div><h2>Gerar Slide</h2>
+      <p>Faz uma <strong>cópia</strong> do Slide modelo (o modelo não é alterado) e preenche os marcadores. <code>{{"{{"}}HPAY_T1{{"}}"}}</code> / <code>{{"{{"}}HPAY_T2{{"}}"}}</code> / <code>{{"{{"}}HPAY_T3{{"}}"}}</code> desenham a <strong>métrica inteira</strong> (gráfico e tabela) dentro da caixa de texto, com texto do próprio slide. A caixa precisa ser larga e alta o bastante para a tabela. <code>{{"{{"}}HPAY_T1_GRAFICO{{"}}"}}</code> desenha só o gráfico. Os gráficos da planilha são removidos.</p></div>
+    {{if .Demo}}<span class="selo selo-suave">Modo demonstração</span>
+    {{else if .Conectado}}<span class="selo selo-ok">Google: {{if .Conta}}{{.Conta}}{{else}}conectado{{end}}</span>
+    {{else}}<span class="selo selo-erro">Google não conectado</span>{{end}}
+  </header>
+  <dl class="detalhes">
+    <dt>Slide modelo</dt><dd>{{if .ModeloURL}}<a href="{{.ModeloURL}}" target="_blank" rel="noopener">{{.ModeloID}}</a>{{else}}<span class="suave">não informado (Configurações)</span>{{end}}</dd>
+  </dl>
+  {{with .Motivo}}<div class="alerta alerta-aviso">{{icone "alerta"}}<div>{{.}}
+    {{if contem . "Configurações"}}<a href="/configuracoes#google">Ir para Configurações</a>{{end}}</div></div>{{end}}
+  <div class="acoes">
+    <form method="post" action="/slide/gerar">
+      <input type="hidden" name="de" value="{{$.C.De}}"><input type="hidden" name="ate" value="{{$.C.Ate}}">
+      <button class="botao" {{if not .PodeGerar}}disabled{{end}}>{{icone "slide"}} {{if .Demo}}Pré-visualizar{{else}}Gerar Slide{{end}}</button>
+    </form>
+    {{if and (not .Demo) .GoogleConfigurado}}
+      {{if .Conectado}}<a class="botao botao-contorno" href="/google/conectar">Reconectar Google</a>
+      <form method="post" action="/google/desconectar" data-confirm="Revogar o acesso desta aplicação no Google e desconectar a conta?">
+        <button class="botao botao-fantasma">Revogar acesso</button>
+      </form>
+      {{else}}<a class="botao botao-contorno" href="/google/conectar">Conectar conta Google</a>{{end}}
+    {{end}}
+  </div>
+
+  {{with .Atual}}
+  <div class="andamento" data-slide-poll>
+    <div class="andamento-linha"><strong id="slide-etapa">{{.Etapa}}</strong><span id="slide-pct" class="suave">{{.Progresso}}%</span></div>
+    <progress id="slide-barra" max="100" value="{{.Progresso}}"></progress>
+  </div>
+  {{end}}
+
+  {{if .Historico}}
+  <h3 class="subtitulo">Últimas gerações</h3>
+  <div class="rolagem">
+    <table class="tabela">
+      <thead><tr><th>Início</th><th>Período</th><th>Status</th><th>Resultado</th><th class="n">Duração</th></tr></thead>
+      <tbody>
+        {{range .Historico}}
+        <tr>
+          <td>{{.InicioTxt}}</td>
+          <td class="suave">{{dataBR .PeriodoInicio}} a {{dataBR .PeriodoFim}}</td>
+          <td>{{if eq .Status "ok"}}<span class="selo selo-ok">Concluída</span>{{else if eq .Status "erro"}}<span class="selo selo-erro">Erro</span>{{else}}<span class="selo selo-suave">Em andamento</span>{{end}}</td>
+          <td>{{if .URL}}<a href="{{.URL}}" target="_blank" rel="noopener">Abrir apresentação</a>{{else}}<span class="suave">–</span>{{end}}</td>
+          <td class="n">{{.Duracao}}</td>
+        </tr>
+        {{if .Mensagem}}<tr class="detalhe"><td colspan="5"><details {{if eq .Status "erro"}}open{{end}}><summary>{{if eq .Status "erro"}}Ver erro{{else}}Ver resumo{{end}}</summary><pre class="{{if eq .Status "erro"}}texto-erro{{end}}">{{.Mensagem}}</pre></details></td></tr>{{end}}
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+  {{end}}
+</section>
+{{end}}
+{{end}}

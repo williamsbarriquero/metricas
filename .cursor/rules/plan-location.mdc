@@ -1,0 +1,18 @@
+---
+description: Planos do Cursor ficam em .cursor/plans do projeto
+alwaysApply: true
+---
+
+# Local dos planos
+
+## Contexto
+
+Planos deste repositório pertencem ao workspace, para ficarem versionáveis e visíveis no Plan Viewer.
+
+## Instruções
+
+- Grave e atualize planos somente em `.cursor/plans/`.
+- Nome do arquivo: `<slug>_<id>.plan.md`.
+- No frontmatter, use `isProject: true`.
+- Se um plano deste repositório aparecer em `~/.cursor/plans` ou numa pasta `Plan` na raiz, mova o arquivo para `.cursor/plans/` e apague a cópia de fora do projeto.
+- Não crie pasta `Plan` ou `plans` na raiz do repositório.

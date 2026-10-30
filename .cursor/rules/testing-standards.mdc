@@ -1,0 +1,25 @@
+---
+description: "Padrões e execução de Testes"
+globs: ["**/*.test.*", "**/*.spec.*", "**/__tests__/**"]
+alwaysApply: false
+---
+# Padrões de Teste RPE
+
+## Contexto
+
+Ativado ao editar ou criar arquivos de teste.
+
+## Instruções
+
+- **Estrutura AAA**: Padrão Arrange, Act, Assert obrigatório.
+- **Nomenclatura**: Títulos descritivos e comportamentais. Ex: `it('should return 404 when user not found')`.
+- **Mocking Strategy**: Faça mock das integrações e dependências externas, nunca faça mock interno (teste o comportamento, não a implementação).
+- **Cobertura**: O mínimo exigido é de 80% de code coverage para novas funcionalidades.
+
+## Verificação (Command-First)
+
+Definition of Done:
+
+1. Comando de testes da stack (ver `AGENTS.md`) finaliza com exit code `0`.
+2. O lint da stack em `stack-baseline.mdc` finaliza com exit code `0` (front: `npm run lint` em `frontend/`; Go: `go vet ./...`).
+3. Nenhuma regressão de snapshot.

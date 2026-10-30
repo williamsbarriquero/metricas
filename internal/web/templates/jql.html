@@ -1,0 +1,16 @@
+{{define "conteudo"}}
+<p class="suave">São as consultas que a sincronização executa para gerar os dados. Período configurado: <strong>{{.Inicio}}</strong> a <strong>{{.Fim}}</strong>. Histórias e Test Bugs usam o limite exclusivo <strong>{{.Limite}}</strong> (dia 1 do mês seguinte à data fim). Horas e incidentes seguem a opção “Incluir o dia final”. Cada bloco é um Espaço; clique na consulta para copiar e conferir no Jira.</p>
+{{if not .Espacos}}
+<section class="cartao"><p>Nenhum Espaço habilitado nas Configurações.</p></section>
+{{else}}
+{{range .Espacos}}
+<section class="cartao">
+  <header class="cartao-cab"><div><h2>{{.Chave}} <span class="suave">{{.Nome}}</span></h2></div></header>
+  {{range .Consultas}}
+  <h3>{{.Titulo}}</h3>
+  <code class="copiavel jql" data-copiar title="Clique para copiar">{{.JQL}}</code>
+  {{end}}
+</section>
+{{end}}
+{{end}}
+{{end}}

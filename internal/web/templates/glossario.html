@@ -1,0 +1,83 @@
+{{define "conteudo"}}
+<nav class="abas" aria-label="Seções">
+  <a href="#espacos">1. Espaços</a>
+  <a href="#gerais">2. Marcadores gerais</a>
+  <a href="#legenda">3. Legenda por Tier</a>
+  <a href="#marcadores">4. Marcadores de cada Espaço</a>
+</nav>
+
+<section class="cartao" id="espacos">
+  <header class="cartao-cab"><div><h2>1. Espaços (chave e nome)</h2>
+    <p>Chave do projeto no Jira e squad correspondente. As colunas mostram em quais coletas cada Espaço está habilitado (Configurações).</p></div></header>
+  <div class="rolagem">
+    <table class="tabela">
+      <thead><tr><th>Chave</th><th>Squad</th><th class="c">Histórias e Test Bugs</th><th class="c">Incidentes</th><th class="c">Horas</th></tr></thead>
+      <tbody>
+        {{range .Espacos}}
+        <tr>
+          <td><span class="selo selo-contorno">{{.Chave}}</span></td><td>{{.Nome}}</td>
+          <td class="c">{{if .Historias}}✓{{else}}<span class="suave">–</span>{{end}}</td>
+          <td class="c">{{if .Incidentes}}✓{{else}}<span class="suave">–</span>{{end}}</td>
+          <td class="c">{{if .Horas}}✓{{else}}<span class="suave">–</span>{{end}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="cartao" id="gerais">
+  <header class="cartao-cab"><div><h2>2. Marcadores gerais</h2>
+    <p>Clique num marcador para copiar e cole no Slide modelo (caixa de texto ou célula de tabela). Os marcadores <code>{{"{{"}}ESP_T1{{"}}"}}</code> / <code>{{"{{"}}ESP_T2{{"}}"}}</code> / <code>{{"{{"}}ESP_T3{{"}}"}}</code> devem ficar sozinhos numa caixa de texto: viram a tabela e o gráfico da tela Métricas.</p></div></header>
+  <div class="rolagem">
+    <table class="tabela">
+      <thead><tr><th>Marcador</th><th>O que traz</th></tr></thead>
+      <tbody>{{range .Gerais}}<tr><td><code class="copiavel" data-copiar>{{.Chave}}</code></td><td>{{.Descricao}}</td></tr>{{end}}</tbody>
+    </table>
+  </div>
+</section>
+
+<div class="titulo-bloco" id="legenda"><h2>3. Legenda dos códigos por Tier</h2>
+  <p class="suave">Padrão: <code>{{"{{"}}ESP_Tier_código_MES_n{{"}}"}}</code> → <code>{{"{{"}}HPAY_T1_H_MES_1{{"}}"}}</code>. Total do período:
+    <code>{{"{{"}}ESP_Tier_código_TOT{{"}}"}}</code> → <code>{{"{{"}}HPAY_T1_H_TOT{{"}}"}}</code>. ESP = chave do Espaço (ou TODOS = soma).
+    Valores vazios (meses fora do período, divisão por zero) viram “-” no Slide.</p></div>
+{{range .Tiers}}
+<section class="cartao">
+  <header class="cartao-cab"><div><span class="selo">{{.ID}}</span><h2>{{.Titulo}}</h2><p>{{.Descricao}}</p></div></header>
+  <div class="rolagem">
+    <table class="tabela">
+      <thead><tr><th>Cód.</th><th>Indicador</th><th>Formato</th><th>Regra</th><th>Exemplo (HPAY, 1º mês)</th></tr></thead>
+      <tbody>
+        {{range .Campos}}<tr><td><span class="selo selo-contorno">{{.Cod}}</span></td><td>{{.Nome}}</td><td>{{.Formato}}</td><td class="suave">{{.Regra}}</td><td><code class="copiavel" data-copiar>{{.Exemplo}}</code></td></tr>{{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+{{end}}
+
+<div class="titulo-bloco" id="marcadores"><h2>4. Marcadores de cada Espaço, por Tier</h2>
+  <p class="suave">Copie para o Slide modelo. Espaços fora do filtro das Configurações não geram valores (o marcador fica sem valor no Slide).
+    Os valores atuais estão na tela <a href="/mapa-slide">MapaSlide</a>.</p></div>
+{{$colunas := .Colunas}}
+{{range .Grades}}
+<section class="cartao">
+  <details>
+    <summary class="cartao-cab"><div><h2>{{.Chave}} - {{.Nome}}</h2>
+      <p>Nome do squad: <code class="copiavel" data-copiar>{{"{{"}}{{.Chave}}_NOME{{"}}"}}</code></p></div></summary>
+    {{$meses := .Meses}}
+    {{range .Tiers}}
+    <h3 class="subtitulo"><span class="selo">{{.ID}}</span> {{.Titulo}} {{if not .Habilitado}}<span class="selo selo-suave">fora do filtro das Configurações</span>{{end}}</h3>
+    <div class="rolagem">
+      <table class="tabela grade-marcadores">
+        <thead><tr><th>{{.ID}}</th>{{range $colunas}}<th>{{.}}</th>{{end}}<th>Total (TOT)</th></tr></thead>
+        <tbody>
+          <tr><td>Mês (rótulo)</td>{{range $meses}}<td><code class="copiavel" data-copiar>{{.}}</code></td>{{end}}<td></td></tr>
+          {{range .Linhas}}<tr><td>{{.Rotulo}}</td>{{range .Marcadores}}<td><code class="copiavel" data-copiar>{{.}}</code></td>{{end}}</tr>{{end}}
+        </tbody>
+      </table>
+    </div>
+    {{end}}
+  </details>
+</section>
+{{end}}
+{{end}}

@@ -1,0 +1,14 @@
+.env
+
+# Bancos locais (podem guardar token OAuth).
+*.db
+*.db-wal
+*.db-shm
+
+# Binários gerados na máquina.
+/metricas-spa
+/golang/metricas
+/internal/metricas-spa
+
+# Cópia do build do React embutida pelo go:embed. run.sh e o Dockerfile recriam.
+/cmd/spa/dist/

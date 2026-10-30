@@ -1,0 +1,25 @@
+---
+description: "Roteamento por intenção (IntentGate)"
+alwaysApply: true
+---
+# Roteamento por Intenção (IntentGate)
+
+## Contexto
+
+Define como o agente deve classificar e rotear tarefas antes da execução.
+
+## Instruções
+
+Antes de iniciar qualquer tarefa, classifique internamente a intenção e siga o fluxo correspondente:
+
+- **`quick`**: Correções rápidas e refatorações pontuais. Forneça resposta direta e implemente.
+- **`deep`**: Implementação complexa ou novo módulo. Acione o fluxo de planejamento → implementação → revisão.
+- **`analysis`**: Investigação de código e debugging. Use ferramentas de leitura, visualização e busca extensivamente antes de intervir.
+- **`review`**: Revisão de PR ou código. Acione `@rpe-reviewer.md` ou `@review-pr.md`. Carregar `code-review.mdc` e `safety-guardrails.mdc`.
+- **`test`**: Criação/execução de testes. Acione fluxo TDD (`@rpe-test-lead.md` → `@rpe-tester.md`). Carregar `tdd-workflow.mdc`, `testing-standards.mdc` e skill `tdd-grinder`.
+- **`infra`**: Configuração de infra, CI/CD, Docker. Acione `@rpe-infra.md` e skills de stack (`node-mastery`, `go-mastery`, `java-mastery`).
+- **`ultrawork`**: Acionado se o usuário usar o prefixo `ultrawork:`, incluir a palavra `ultrawork`, invocar `@ultrawork.md` ou solicitar explicitamente. Ative `ultrawork.mdc` e o ciclo de auto-correção via `.cursor/hooks/continuations/grind-loop.ts` (até 5 iterações).
+
+## Validação de Compilação (LSP)
+
+- Antes de finalizar qualquer alteração de código (em especial nos modos `quick`, `deep` e `ultrawork`), o agente DEVE consultar ativamente os diagnósticos do LSP da IDE para garantir que não há erros de tipagem, importações quebradas ou falhas de compilação remanescentes no arquivo modificado.

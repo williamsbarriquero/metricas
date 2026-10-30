@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="color-scheme" content="light">
+  <style>{{.CSS}}</style>
+</head>
+<body>
+<div id="print" {{if .PaletaCSS}}style="{{.PaletaCSS}}"{{end}}>
+{{if .SoGrafico}}
+  {{if .SemDados}}<p class="vazio">{{.SemDados}}</p>{{else}}{{.Grafico}}{{end}}
+{{else}}
+<section class="cartao">
+  <header class="cartao-cab">
+    <div><span class="selo">{{.Selo}}</span><h2>{{.Titulo}}</h2>
+      <p>{{.Descricao}}</p></div>
+  </header>
+  {{if .SemDados}}<p class="vazio">{{.SemDados}}</p>{{else}}
+  <div class="duas-colunas">
+    {{.Grafico}}
+    <div class="rolagem">
+      {{if eq .Tier "T1"}}
+      <table class="tabela">
+        <thead><tr><th>Mês</th><th class="n">Histórias</th><th class="n">Test Bugs</th><th class="n">Test Bugs / Histórias</th><th class="n">Principal</th><th class="n">Alternativo</th><th class="n">Exceção</th></tr></thead>
+        <tbody>
+          {{range .Bloco.T1.Meses}}<tr><td>{{.Mes}}</td><td class="n">{{numero .Historias}}</td><td class="n">{{numero .TestBugs}}</td><td class="n">{{pct .Razao}}</td><td class="n">{{numero .FluxoPrincipal}}</td><td class="n">{{numero .FluxoAlternativo}}</td><td class="n">{{numero .FluxoExcecao}}</td></tr>{{end}}
+          {{with .Bloco.T1.Total}}<tr class="total"><td>Período</td><td class="n">{{numero .Historias}}</td><td class="n">{{numero .TestBugs}}</td><td class="n">{{pct .Razao}}</td><td class="n">{{numero .FluxoPrincipal}}</td><td class="n">{{numero .FluxoAlternativo}}</td><td class="n">{{numero .FluxoExcecao}}</td></tr>{{end}}
+        </tbody>
+      </table>
+      {{else if eq .Tier "T2"}}
+      <table class="tabela">
+        <thead><tr><th>Mês</th><th class="n">Sustentação</th><th class="n">Evolução</th><th class="n">Overhead</th><th class="n">Sem conta</th><th class="n">Total (sem Recesso)</th><th class="n">% Sust.</th><th class="n">% Evol.</th><th class="n">% Over.</th></tr></thead>
+        <tbody>
+          {{range .Bloco.T2.Meses}}<tr><td>{{.Mes}}</td><td class="n">{{horas .Sustentacao}}</td><td class="n">{{horas .Evolucao}}</td><td class="n">{{horas .Overhead}}</td><td class="n">{{horas .SemConta}}</td><td class="n">{{horas .Total}}</td><td class="n">{{pct .PctSustentacao}}</td><td class="n">{{pct .PctEvolucao}}</td><td class="n">{{pct .PctOverhead}}</td></tr>{{end}}
+          {{with .Bloco.T2.Total}}<tr class="total"><td>Período</td><td class="n">{{horas .Sustentacao}}</td><td class="n">{{horas .Evolucao}}</td><td class="n">{{horas .Overhead}}</td><td class="n">{{horas .SemConta}}</td><td class="n">{{horas .Total}}</td><td class="n">{{pct .PctSustentacao}}</td><td class="n">{{pct .PctEvolucao}}</td><td class="n">{{pct .PctOverhead}}</td></tr>{{end}}
+        </tbody>
+      </table>
+      {{else}}
+      <table class="tabela">
+        <thead><tr><th>Mês</th><th class="n">Criados</th><th class="n">Resolvidos</th><th class="n">Estoque</th><th class="n">Vazão</th></tr></thead>
+        <tbody>
+          {{range .Bloco.T3.Meses}}<tr><td>{{.Mes}}</td><td class="n">{{numero .Criados}}</td><td class="n">{{numero .Resolvidos}}</td><td class="n">{{numero .Estoque}}</td><td class="n">{{pctDireto .Vazao}}</td></tr>{{end}}
+          {{with .Bloco.T3.Total}}<tr class="total"><td>Período</td><td class="n">{{numero .Criados}}</td><td class="n">{{numero .Resolvidos}}</td><td class="n">{{numero .Estoque}}</td><td class="n">{{pctDireto .Vazao}}</td></tr>{{end}}
+        </tbody>
+      </table>
+      {{end}}
+    </div>
+  </div>
+  {{end}}
+</section>
+{{end}}
+</div>
+</body>
+</html>

@@ -1,0 +1,38 @@
+{{define "conteudo"}}
+<section class="cartao formulario">
+  {{with .Erro}}<div class="alerta alerta-erro">{{icone "alerta"}}<div>{{.}}</div></div>{{end}}
+  <form method="post" action="{{if .Novo}}/equipe{{else}}/equipe/{{.Membro.ID}}{{end}}">
+    <label class="campo bloco">E-mail ou nome (como no Jira)
+      <input type="text" name="nome" value="{{.Membro.Nome}}" placeholder="pessoa@rpe.tech" autofocus>
+    </label>
+    <label class="campo bloco">Coordenador
+      <input type="text" name="coordenador" value="{{.Membro.Coordenador}}" list="coordenadores" placeholder="Sem coordenador">
+      <datalist id="coordenadores">
+        {{range .Coordenadores}}<option value="{{.}}"></option>{{end}}
+      </datalist>
+      <small class="suave">Só organiza a lista. Não muda quem entra nas horas.</small>
+    </label>
+    <label class="campo bloco">Account ID (opcional)
+      <input type="text" name="account_id" value="{{.Membro.AccountID}}" placeholder="712020:abc...">
+      <small class="suave">Útil quando o e-mail está oculto no Jira. Use “Resolver Account IDs” na lista para preencher automaticamente.</small>
+    </label>
+    <fieldset class="campo bloco">
+      <legend>Espaços (opcional)</legend>
+      <div class="grade-checks">
+        {{range .Opcoes}}
+        <label class="check"><input type="checkbox" name="espacos" value="{{.Chave}}" {{if .Marcado}}checked{{end}}> <span><strong>{{.Chave}}</strong>{{if .Nome}} <small class="suave">{{.Nome}}</small>{{end}}</span></label>
+        {{end}}
+      </div>
+      <small class="suave">Sem seleção, as horas valem em todos os Espaços.</small>
+    </fieldset>
+    <label class="campo bloco">Observação
+      <textarea name="observacao" rows="2">{{.Membro.Observacao}}</textarea>
+    </label>
+    <label class="check"><input type="checkbox" name="incluir" value="1" {{if .Membro.Incluir}}checked{{end}}> Incluir nas horas</label>
+    <div class="acoes fim">
+      <a class="botao botao-contorno" href="/equipe">Cancelar</a>
+      <button class="botao">Salvar</button>
+    </div>
+  </form>
+</section>
+{{end}}

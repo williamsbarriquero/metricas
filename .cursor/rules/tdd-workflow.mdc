@@ -1,0 +1,19 @@
+---
+description: "Fluxo de desenvolvimento guiado por testes (TDD)"
+alwaysApply: false
+---
+# Workflow TDD RPE
+
+## Contexto
+
+Fluxo completo e rigoroso para implementação orientada a testes.
+
+## Instruções
+
+- **Ciclo Red-Green-Refactor**:
+  1. **RED**: Escrever o teste que falha para a funcionalidade desejada.
+  2. **GREEN**: Implementar o código mínimo necessário para que o teste passe.
+  3. **REFACTOR**: Melhorar e refatorar o código implementado garantindo que os testes continuem verdes.
+- **Integração Grind-Loop**: Anotar o status `ALL_TESTS_PASSED: true|false` no arquivo scratchpad ao concluir as execuções.
+- **Closure**: A tarefa é considerada completa SOMENTE quando o comando de testes da stack (ver `AGENTS.md` ou `stack-baseline.mdc`) retornar exit code `0`.
+- **Scratchpad**: Usar `.cursor/scratchpad.md` (template em `.cursor/scratchpad.template.md`) para persistir estado entre iterações.

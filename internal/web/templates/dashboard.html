@@ -1,0 +1,187 @@
+{{define "conteudo"}}
+{{with .ErroConsulta}}<div class="alerta alerta-erro">{{icone "alerta"}}<div>{{.}}</div></div>{{end}}
+
+<form class="filtros" method="get" action="/" data-auto-submit>
+  {{range .C.Ocultos "espaco" "de" "ate"}}<input type="hidden" name="{{.K}}" value="{{.V}}">{{end}}
+  {{if eq .C.Aba "espaco"}}
+  <label class="campo">Espaço
+    <select name="espaco" class="largo">
+      <option value="{{.OpcaoTodos.Valor}}" {{if .OpcaoTodos.Marcada}}selected{{end}}>{{.OpcaoTodos.Rotulo}}</option>
+      {{range .Grupos}}
+      <optgroup label="{{.Rotulo}}">
+        {{range .Itens}}<option value="{{.Valor}}" {{if .Marcada}}selected{{end}}>{{.Rotulo}}</option>{{end}}
+      </optgroup>
+      {{end}}
+    </select>
+  </label>
+  {{end}}
+  <label class="campo">De <input type="month" name="de" value="{{.MesDe}}"></label>
+  <label class="campo">Até <input type="month" name="ate" value="{{.MesAte}}"></label>
+  {{if .Custom}}<a class="botao botao-fantasma" href="{{.URLLimpar}}">Período das Configurações</a>{{end}}
+  <noscript><button class="botao">Aplicar</button></noscript>
+  <p class="periodo-info">
+    Período: {{dataBR .Res.Periodo.Inicio}} a {{dataBR .Res.Periodo.Fim}}<br>
+    {{if .Res.AtualizadoEm}}Última coleta: {{dataHoraISO .Res.AtualizadoEm}}{{else}}Nenhuma coleta concluída{{end}}
+  </p>
+</form>
+
+{{range .Res.Avisos}}
+<div class="alerta alerta-info">{{icone "info"}}<div>{{.}}
+  {{if contem . "Sincronização"}}<a href="/sincronizacao">Ir para Sincronização</a>{{end}}
+  {{if contem . "Equipe"}}<a href="/equipe">Ir para Equipe</a>{{end}}
+</div></div>
+{{end}}
+
+<nav class="abas" aria-label="Visões">
+  <a href="{{.URLEspaco}}" class="{{if eq .C.Aba "espaco"}}ativa{{end}}">Visão do Espaço</a>
+  <a href="{{.URLComp}}" class="{{if eq .C.Aba "comparativo"}}ativa{{end}}">Comparativo</a>
+</nav>
+
+{{if eq .C.Aba "comparativo"}}
+  {{template "comparativo" .}}
+{{else if .Bloco}}
+  <div class="visao-espaco" {{if .PaletaCSS}}style="{{.PaletaCSS}}"{{end}}>
+  <div class="titulo-bloco">
+    <h2>{{if .CorBU}}<span class="ponto" style="background:{{.CorBU}};display:inline-block;width:.7rem;height:.7rem;border-radius:999px;vertical-align:middle;margin-right:.35rem"></span>{{end}}{{.Bloco.Rotulo}}{{if .BUNome}} <span class="selo selo-suave">{{.BUNome}}</span>{{end}}</h2>
+    {{if not .Bloco.TemDados}}<p class="suave">Este Espaço não tem dados coletados no período.</p>{{end}}
+  </div>
+
+  <div class="kpis">
+    {{range .KPIs}}
+    <div class="cartao kpi">
+      <div class="kpi-cab"><span>{{.Titulo}}</span>{{icone .Icone}}</div>
+      <p class="kpi-valor">{{.Valor}}</p>
+      <p class="kpi-detalhe">{{.Detalhe}}</p>
+    </div>
+    {{end}}
+  </div>
+
+  <section class="cartao">
+    <header class="cartao-cab">
+      <div><span class="selo">T1</span><h2>Histórias vs Test Bugs</h2>
+        <p>Histórias entregues e Test Bugs resolvidos por mês, com a razão e a quebra por fluxo.</p></div>
+      <a class="botao botao-contorno botao-peq" href="{{index .CSV "t1"}}">{{icone "download"}} CSV</a>
+    </header>
+    {{if .GraficoT1}}
+    <div class="duas-colunas">
+      {{.GraficoT1}}
+      <div class="rolagem">
+        <table class="tabela">
+          <thead><tr><th>Mês</th><th class="n">Histórias</th><th class="n">Test Bugs</th><th class="n">Test Bugs / Histórias</th><th class="n">Principal</th><th class="n">Alternativo</th><th class="n">Exceção</th></tr></thead>
+          <tbody>
+            {{range .Bloco.T1.Meses}}<tr><td>{{.Mes}}</td><td class="n">{{numero .Historias}}</td><td class="n">{{numero .TestBugs}}</td><td class="n">{{pct .Razao}}</td><td class="n">{{numero .FluxoPrincipal}}</td><td class="n">{{numero .FluxoAlternativo}}</td><td class="n">{{numero .FluxoExcecao}}</td></tr>{{end}}
+            {{with .Bloco.T1.Total}}<tr class="total"><td>Período</td><td class="n">{{numero .Historias}}</td><td class="n">{{numero .TestBugs}}</td><td class="n">{{pct .Razao}}</td><td class="n">{{numero .FluxoPrincipal}}</td><td class="n">{{numero .FluxoAlternativo}}</td><td class="n">{{numero .FluxoExcecao}}</td></tr>{{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{else}}{{template "semDados" "Sem dados neste período. Rode a coleta na tela Sincronização."}}{{end}}
+  </section>
+
+  <section class="cartao">
+    <header class="cartao-cab">
+      <div><span class="selo">T2</span><h2>Horas por Conta de Esforço</h2>
+        <p>Distribuição das horas da Equipe entre Evolução, Sustentação e Overhead (Recesso fica de fora).</p></div>
+      <a class="botao botao-contorno botao-peq" href="{{index .CSV "t2"}}">{{icone "download"}} CSV</a>
+    </header>
+    {{if .GraficoT2}}
+    <div class="duas-colunas">
+      {{.GraficoT2}}
+      <div class="rolagem">
+        <table class="tabela">
+          <thead><tr><th>Mês</th><th class="n">Sustentação</th><th class="n">Evolução</th><th class="n">Overhead</th><th class="n">Sem conta</th><th class="n">Total (sem Recesso)</th><th class="n">% Sust.</th><th class="n">% Evol.</th><th class="n">% Over.</th></tr></thead>
+          <tbody>
+            {{range .Bloco.T2.Meses}}<tr><td>{{.Mes}}</td><td class="n">{{horas .Sustentacao}}</td><td class="n">{{horas .Evolucao}}</td><td class="n">{{horas .Overhead}}</td><td class="n">{{horas .SemConta}}</td><td class="n">{{horas .Total}}</td><td class="n">{{pct .PctSustentacao}}</td><td class="n">{{pct .PctEvolucao}}</td><td class="n">{{pct .PctOverhead}}</td></tr>{{end}}
+            {{with .Bloco.T2.Total}}<tr class="total"><td>Período</td><td class="n">{{horas .Sustentacao}}</td><td class="n">{{horas .Evolucao}}</td><td class="n">{{horas .Overhead}}</td><td class="n">{{horas .SemConta}}</td><td class="n">{{horas .Total}}</td><td class="n">{{pct .PctSustentacao}}</td><td class="n">{{pct .PctEvolucao}}</td><td class="n">{{pct .PctOverhead}}</td></tr>{{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{else}}
+      {{if .Res.EquipeAtiva}}{{template "semDados" "Sem horas da Equipe neste período."}}
+      {{else}}{{template "semDados" "Sem horas: cadastre as pessoas na tela Equipe (Incluir = Sim)."}}{{end}}
+    {{end}}
+  </section>
+
+  <section class="cartao">
+    <header class="cartao-cab">
+      <div><span class="selo">T3</span><h2>Vazão de Incidentes</h2>
+        <p>Incidentes criados e resolvidos por mês. Estoque = abertos no fim do mês. Vazão = Resolvidos ÷ Criados × 100.</p></div>
+      <a class="botao botao-contorno botao-peq" href="{{index .CSV "t3"}}">{{icone "download"}} CSV</a>
+    </header>
+    {{if .GraficoT3}}
+    <div class="duas-colunas">
+      {{.GraficoT3}}
+      <div class="rolagem">
+        <table class="tabela">
+          <thead><tr><th>Mês</th><th class="n">Criados</th><th class="n">Resolvidos</th><th class="n">Estoque</th><th class="n">Vazão</th></tr></thead>
+          <tbody>
+            {{range .Bloco.T3.Meses}}<tr><td>{{.Mes}}</td><td class="n">{{numero .Criados}}</td><td class="n">{{numero .Resolvidos}}</td><td class="n">{{numero .Estoque}}</td><td class="n">{{pctDireto .Vazao}}</td></tr>{{end}}
+            {{with .Bloco.T3.Total}}<tr class="total"><td>Período</td><td class="n">{{numero .Criados}}</td><td class="n">{{numero .Resolvidos}}</td><td class="n">{{numero .Estoque}}</td><td class="n">{{pctDireto .Vazao}}</td></tr>{{end}}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {{else}}{{template "semDados" "Sem dados neste período. Rode a coleta na tela Sincronização."}}{{end}}
+  </section>
+  </div>
+{{else}}
+  <p class="suave">Espaço não encontrado.</p>
+{{end}}
+{{end}}
+
+{{define "comparativo"}}
+{{with .Comp}}
+<section class="cartao">
+  <header class="cartao-cab">
+    <div><h2>Comparativo entre Espaços</h2>
+      <p>Totais do período para cada Espaço. Clique nos títulos para ordenar.</p></div>
+    <div class="acoes">
+      <form method="get" action="/" data-auto-submit class="inline">
+        {{range $.C.Ocultos "semdados"}}<input type="hidden" name="{{.K}}" value="{{.V}}">{{end}}
+        <label class="interruptor-rotulo"><input type="checkbox" name="semdados" value="1" {{if $.C.SemDados}}checked{{end}}> Mostrar Espaços sem dados</label>
+      </form>
+      <a class="botao botao-contorno botao-peq" href="{{.URLCSV}}">{{icone "download"}} CSV</a>
+    </div>
+  </header>
+  <div class="rolagem">
+    <table class="tabela">
+      <thead><tr>
+        {{range .Colunas}}<th class="{{if .Numerica}}n{{end}}"><a class="ordenar" href="{{.URL}}">{{.Titulo}} <span class="seta">{{.Seta}}</span></a></th>{{end}}
+      </tr></thead>
+      <tbody>
+        {{range .Linhas}}
+        <tr>
+          <td><strong>{{.Nome}}</strong><br><small class="suave">{{.Chave}}</small></td>
+          <td class="n">{{numero .Historias}}</td><td class="n">{{numero .TestBugs}}</td><td class="n">{{pct .Razao}}</td>
+          <td class="n">{{horas .Horas}}</td><td class="n">{{pct .PctEvol}}</td><td class="n">{{pct .PctSust}}</td><td class="n">{{pct .PctOver}}</td>
+          <td class="n">{{numero .Criados}}</td><td class="n">{{numero .Resolvidos}}</td><td class="n">{{numero .Estoque}}</td><td class="n">{{pctDireto .Vazao}}</td>
+        </tr>
+        {{else}}
+        <tr><td colspan="12" class="vazio">Nenhum Espaço com dados no período.</td></tr>
+        {{end}}
+        {{with .Todos}}
+        <tr class="total">
+          <td>Todos os Espaços</td>
+          <td class="n">{{numero .Historias}}</td><td class="n">{{numero .TestBugs}}</td><td class="n">{{pct .Razao}}</td>
+          <td class="n">{{horas .Horas}}</td><td class="n">{{pct .PctEvol}}</td><td class="n">{{pct .PctSust}}</td><td class="n">{{pct .PctOver}}</td>
+          <td class="n">{{numero .Criados}}</td><td class="n">{{numero .Resolvidos}}</td><td class="n">{{numero .Estoque}}</td><td class="n">{{pctDireto .Vazao}}</td>
+        </tr>
+        {{end}}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="cartao">
+  <header class="cartao-cab">
+    <div><h2>Ranking por indicador</h2><p>{{.MetricaRotulo}} no período, por Espaço.</p></div>
+    <form method="get" action="/" data-auto-submit class="inline">
+      {{range $.C.Ocultos "metrica"}}<input type="hidden" name="{{.K}}" value="{{.V}}">{{end}}
+      <select name="metrica">{{range .Metricas}}<option value="{{.Valor}}" {{if .Marcada}}selected{{end}}>{{.Rotulo}}</option>{{end}}</select>
+    </form>
+  </header>
+  {{if .Ranking}}{{.Ranking}}{{else}}{{template "semDados" "Sem dados para este indicador."}}{{end}}
+</section>
+{{end}}
+{{end}}

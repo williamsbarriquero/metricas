@@ -1,0 +1,66 @@
+{{define "conteudo"}}
+<section class="cartao">
+  <header class="cartao-cab"><div><h2>Conexão com o Jira</h2>
+    <p>Definida no arquivo <code>.env</code> ao lado do executável (ou em variáveis de ambiente). O token nunca aparece nas páginas.</p></div>
+    {{if .Jira.Configurado}}<span class="selo selo-ok">Credenciais configuradas</span>{{else}}<span class="selo selo-erro">Credenciais ausentes</span>{{end}}
+  </header>
+  <dl class="detalhes">
+    <dt>Site</dt><dd>{{.Jira.URL}}</dd>
+    <dt>E-mail</dt><dd>{{if .Jira.Email}}{{.Jira.Email}}{{else}}<span class="suave">não informado</span>{{end}}</dd>
+  </dl>
+  {{if not .Jira.Configurado}}
+  <div class="alerta alerta-aviso">{{icone "alerta"}}<div>Preencha <code>JIRA_EMAIL</code> e <code>JIRA_TOKEN</code> no <code>.env</code> e reinicie o programa. Crie o token em
+    <a href="https://id.atlassian.com/manage-profile/security/api-tokens" target="_blank" rel="noopener">id.atlassian.com</a>.</div></div>
+  {{end}}
+</section>
+
+<section class="cartao" id="google">
+  <header class="cartao-cab"><div><h2>Google (Drive e Slides)</h2>
+    <p>Client ID e Secret ficam no <code>.env</code> (<code>GOOGLE_CLIENT_ID</code>, <code>GOOGLE_CLIENT_SECRET</code>). O token da sua conta fica no banco e nunca aparece nas páginas.</p></div>
+    {{if .Google.Demo}}<span class="selo selo-suave">Modo demonstração</span>
+    {{else if .Google.Conectado}}<span class="selo selo-ok">Conectado{{if .Google.Conta}}: {{.Google.Conta}}{{end}}</span>
+    {{else if .Google.Configurado}}<span class="selo selo-aviso">Não conectado</span>
+    {{else}}<span class="selo selo-erro">Não configurado</span>{{end}}
+  </header>
+  {{if not .Google.Configurado}}
+  <div class="alerta alerta-aviso">{{icone "alerta"}}<div>Preencha <code>GOOGLE_CLIENT_ID</code> e <code>GOOGLE_CLIENT_SECRET</code> no <code>.env</code> (cliente OAuth tipo Desktop, APIs Drive e Slides ativas) e reinicie o programa.</div></div>
+  {{else if .Google.Demo}}
+  <p class="suave">No modo demonstração o Slide é só pré-visualizado, sem chamar o Google.</p>
+  {{else}}
+  {{if .Google.Conectado}}
+  <p class="suave">Se a geração do Slide falhar com “Invalid Credentials”, o token expirou ou foi revogado. Reconecte para pedir um novo, ou revogue o acesso e conecte de novo.</p>
+  {{end}}
+  <div class="acoes">
+    {{if .Google.Conectado}}
+    <a class="botao" href="/google/conectar">Reconectar</a>
+    <form method="post" action="/google/desconectar" data-confirm="Revogar o acesso desta aplicação no Google e desconectar a conta?">
+      <button class="botao botao-contorno">Revogar acesso</button>
+    </form>
+    {{else}}
+    <a class="botao" href="/google/conectar">Conectar conta Google</a>
+    {{end}}
+  </div>
+  {{end}}
+</section>
+
+<form method="post" action="/configuracoes">
+  {{with .Erro}}<div class="alerta alerta-erro">{{icone "alerta"}}<div>{{.}}</div></div>{{end}}
+  {{range .Grupos}}
+  <section class="cartao">
+    <header class="cartao-cab"><div><h2>{{.Titulo}}</h2>{{if .Descricao}}<p>{{.Descricao}}</p>{{end}}</div></header>
+    <div class="grade-campos">
+      {{range .Campos}}
+      <label class="campo bloco {{if eq .Tipo "lista"}}largo-total{{end}}">{{.Rotulo}}
+        {{if eq .Tipo "data"}}<input type="date" name="{{.Chave}}" value="{{.Valor}}" required>
+        {{else if eq .Tipo "simnao"}}<select name="{{.Chave}}"><option value="Sim" {{if eq .Valor "Sim"}}selected{{end}}>Sim</option><option value="Não" {{if ne .Valor "Sim"}}selected{{end}}>Não</option></select>
+        {{else if eq .Chave "horasModo"}}<select name="{{.Chave}}"><option value="bulk" {{if eq .Valor "bulk"}}selected{{end}}>bulk (rápido, endpoints em massa)</option><option value="por_issue" {{if eq .Valor "por_issue"}}selected{{end}}>por_issue (uma chamada por issue)</option></select>
+        {{else}}<input type="text" name="{{.Chave}}" value="{{.Valor}}">{{end}}
+        <small class="suave">{{.Nota}}</small>
+      </label>
+      {{end}}
+    </div>
+  </section>
+  {{end}}
+  <div class="acoes fim"><button class="botao">Salvar configurações</button></div>
+</form>
+{{end}}

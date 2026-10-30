@@ -1,0 +1,59 @@
+{{define "layout"}}<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Titulo}} · Métricas RPE</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <script>(function(){var t=localStorage.getItem('tema');if(!t&&window.matchMedia&&matchMedia('(prefers-color-scheme: dark)').matches)t='escuro';document.documentElement.dataset.tema=t||'claro'})()</script>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+<div class="app">
+  <aside class="lateral" id="lateral">
+    <a class="marca" href="/">
+      <span class="marca-logo">M</span>
+      <span><strong>Métricas RPE</strong><small>Coordenadores</small></span>
+    </a>
+    <nav class="menu" aria-label="Principal">
+      <a href="/" class="{{if eq .Ativo "dashboard"}}ativo{{end}}">{{icone "dashboard"}} Dashboard</a>
+      <a href="/metricas" class="{{if eq .Ativo "metricas"}}ativo{{end}}">{{icone "metricas"}} Métricas</a>
+      <a href="/mapa-slide" class="{{if eq .Ativo "mapaslide"}}ativo{{end}}">{{icone "slide"}} MapaSlide</a>
+      <a href="/dados/historias" class="{{if eq .Ativo "dados"}}ativo{{end}}">{{icone "dados"}} Dados</a>
+      <a href="/equipe" class="{{if eq .Ativo "equipe"}}ativo{{end}}">{{icone "equipe"}} Equipe</a>
+      <a href="/horas-equipe" class="{{if eq .Ativo "horas"}}ativo{{end}}">{{icone "relogio"}} Horas da Equipe</a>
+      <a href="/configuracoes" class="{{if eq .Ativo "configuracoes"}}ativo{{end}}">{{icone "configuracoes"}} Configurações</a>
+      <a href="/sincronizacao" class="{{if eq .Ativo "sincronizacao"}}ativo{{end}}">{{icone "sincronizacao"}} Sincronização</a>
+      <a href="/glossario" class="{{if eq .Ativo "glossario"}}ativo{{end}}">{{icone "glossario"}} Glossário</a>
+      <a href="/jql" class="{{if eq .Ativo "jql"}}ativo{{end}}">{{icone "jql"}} Glossário de JQL</a>
+    </nav>
+    <div class="lateral-rodape">
+      {{if .SyncBadge.Texto}}
+      <a href="/sincronizacao" class="selo-sync {{if .SyncBadge.Executando}}executando{{end}}" {{if .SyncBadge.Executando}}data-sync-poll{{end}}>
+        <span class="bolinha"></span>{{.SyncBadge.Texto}}
+      </a>
+      {{end}}
+      <button type="button" class="botao-tema" data-alternar-tema title="Alternar tema claro/escuro">
+        <span class="so-claro">{{icone "lua"}} Tema escuro</span><span class="so-escuro">{{icone "sol"}} Tema claro</span>
+      </button>
+      {{if .Versao}}<small class="versao">v{{.Versao}}</small>{{end}}
+    </div>
+  </aside>
+
+  <div class="coluna">
+    <header class="topo">
+      <button type="button" class="botao-menu" data-alternar-menu aria-label="Abrir menu">{{icone "menu"}}</button>
+      <div>
+        <h1>{{.Titulo}}</h1>
+        {{if .Subtitulo}}<p>{{.Subtitulo}}</p>{{end}}
+      </div>
+    </header>
+    <main class="conteudo">
+      {{with .Flash}}<div class="alerta {{.Classe}}" role="status">{{if eq .Tipo "erro"}}{{icone "alerta"}}{{else}}{{icone "info"}}{{end}}<div>{{.Msg}}</div></div>{{end}}
+      {{template "conteudo" .}}
+    </main>
+  </div>
+</div>
+<script src="/static/app.js" defer></script>
+</body>
+</html>{{end}}

@@ -1,0 +1,22 @@
+---
+description: "Fluxo e checklist de revisão de código. Ativar em revisões de PR ou code review."
+alwaysApply: false
+---
+# Fluxo Code Review RPE
+
+## Contexto
+
+Ativado quando solicitada uma análise estruturada ou revisão de PR.
+
+## Instruções
+
+- **Checklist estruturada de revisão**:
+  - [ ] **Segurança**: Credenciais em código, vulnerabilidades de injection, XSS. Aplicar também `safety-guardrails.mdc`; para deep dive AppSec, escalar ao `@rpe-security.md`.
+  - [ ] **Performance**: Problemas de N+1, loops ineficientes, memory leaks.
+  - [ ] **Legibilidade**: Nomeação adequada de variáveis, complexidade ciclomática reduzida.
+  - [ ] **Testes**: Cobertura adequada e cenários (edge cases) validados conforme `testing-standards.mdc` e `qa-standards.mdc`.
+  - [ ] **Arquitetura**: Separação adequada de responsabilidades (concerns), gestão correta de dependências.
+
+- **Formato do relatório final**:
+  - Status: Aprovado ✅ / Alterações Necessárias ⚠️ / Rejeitado ❌
+  - Classifique os itens apontados pela sua severidade: Critical / Major / Minor / Suggestion.

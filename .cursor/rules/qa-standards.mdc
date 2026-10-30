@@ -1,0 +1,20 @@
+---
+description: "Padrões de Qualidade e Estrutura de Testes (QA)"
+globs: ["**/*.{test,spec}.{js,ts,tsx,go,java}", "**/*.feature", "**/e2e/**"]
+alwaysApply: false
+---
+
+# Padrões de Qualidade e QA da RPE
+
+## Contexto
+
+Define as convenções e boas práticas obrigatórias para escrita de testes automatizados e cenários BDD na RPE.
+
+## Instruções
+
+Ao criar ou modificar testes/cenários:
+
+- **Testes Unitários/Integração**: Devem seguir o padrão AAA (Arrange, Act, Assert) ou Given-When-Then. Devem ser limpos, focados em uma única asserção lógica por caso de teste e evitar acoplamento.
+- **BDD (Gherkin)**: Escreva em Português (BR) utilizando Given (Dado), When (Quando), Then (Então), And (E), But (Mas). Evite detalhes de implementação física (como IDs de elementos ou cliques em seletores CSS) na escrita de cenários Gherkin; foque no comportamento de negócio.
+- **Seletividade E2E**: Utilize seletores resilientes e orientados ao usuário (como `role`, `text`, ou atributos específicos `data-testid`). Nunca use seletores XPath absolutos ou dependentes da estrutura DOM (como `div > div > button`).
+- **Relatório de Cobertura**: Ao alterar código que afeta fluxos críticos, certifique-se de que a cobertura foi avaliada ou mantida, descrevendo os cenários testados no relatório de PR.

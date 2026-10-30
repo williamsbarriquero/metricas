@@ -1,0 +1,17 @@
+---
+description: "Ativa padrões TypeScript por contexto (UI vs backend)"
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
+---
+
+# Padrões TypeScript
+
+## Ativação
+
+Ao editar arquivos `.ts` / `.tsx` deste repositório, leia **`frontend-mastery`** → `.cursor/knowledge/stacks/frontend.md`.
+
+O TypeScript daqui é a SPA Vite. Não há backend Node e `@node-mastery` não está instalado.
+
+## Verificação
+
+Conforme `stack-baseline.mdc` → seção Frontend. Em `frontend/`: `npm run lint`, `npm run fmt:check`, `npx tsc -b`, `npm test`.
